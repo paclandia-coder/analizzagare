@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gare">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head><body>
+
+<title>Analisi Gare</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Condensed:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+/* Layout: timing sheet. Masthead with tabs; Confronto = selection rail on the left, stack of charts on the right,
+   side-by-side summary table below. Colour = race identity (same slot in chips, lines, table heads). */
+:root{
+  --bg:#eef1f2; --surface:#fcfcfb; --surface-2:#f2f5f5; --ink:#0f1416; --ink-2:#444e52; --ink-3:#667074;
+  --line:#d6dddf; --grid:#e6eaeb; --focus:#2a78d6; --crit:#b3261e; --warn:#9a5200;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --f-display:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-body:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1213; --surface:#1a1a19; --surface-2:#222524; --ink:#f0efec; --ink-2:#c3c2b7; --ink-3:#9c9d96;
+  --line:#34383a; --grid:#2a2d2e; --focus:#5598e7; --crit:#ff8a80; --warn:#f0b25e;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1213; --surface:#1a1a19; --surface-2:#222524; --ink:#f0efec; --ink-2:#c3c2b7; --ink-3:#9c9d96;
+  --line:#34383a; --grid:#2a2d2e; --focus:#5598e7; --crit:#ff8a80; --warn:#f0b25e;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 56px}
+.page{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{margin:0;font-family:var(--f-display);text-transform:uppercase;letter-spacing:.05em;text-wrap:balance}
+h2{font-size:22px;font-weight:600}
+h3{font-size:17px;font-weight:600}
+small,.muted{color:var(--ink-3)}
+.top{display:flex;align-items:flex-end;gap:12px 24px;flex-wrap:wrap;padding-bottom:0;border-bottom:2px solid var(--ink)}
+.brand{font:700 30px/1 var(--f-display);letter-spacing:.07em;text-transform:uppercase;padding-bottom:8px}
+.brand span{font-weight:500;color:var(--ink-3)}
+.tabs{display:flex;gap:2px;flex:1;min-width:0;flex-wrap:wrap}
+.tab{font:600 18px/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase;background:none;border:0;border-bottom:4px solid transparent;
+  color:var(--ink-3);padding:10px 14px 8px;cursor:pointer;margin-bottom:-2px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.tab:hover{color:var(--ink)}
+.top .btn{margin-bottom:8px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn{font:600 14px/1 var(--f-body);padding:10px 14px;border-radius:4px;border:1px solid var(--ink);background:var(--ink);color:var(--surface);cursor:pointer}
+.btn:hover{opacity:.88}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--ink);opacity:1}
+.btn.sm{padding:7px 10px;font-size:13px}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.card>h2,.card>.row>h2{margin-bottom:12px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.row.between{justify-content:space-between}
+.grid2{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:980px){.grid2{grid-template-columns:minmax(0,1fr)}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);min-width:0}
+.field,select,input[type=text],input[type=date],input[type=number]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink);
+  font-size:15px;letter-spacing:0;text-transform:none}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form .full{grid-column:1/-1}
+@media(max-width:480px){.form{grid-template-columns:minmax(0,1fr)}}
+.drop{display:block;border:2px dashed var(--line);border-radius:6px;padding:22px 16px;text-align:center;cursor:pointer;color:var(--ink-2);background:var(--surface-2)}
+.drop:hover,.drop.over{border-color:var(--ink)}
+.drop b{display:block;font:600 18px var(--f-display);letter-spacing:.05em;text-transform:uppercase;color:var(--ink);margin-bottom:2px}
+.drop input{display:none}
+.note{font-size:13px;color:var(--ink-3)}
+.err{color:var(--crit);font-weight:500}
+.tblwrap{overflow-x:auto;max-width:100%}
+.tblwrap.tall{max-height:560px;overflow:auto}
+table{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;width:100%}
+th,td{padding:7px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid);font-size:14px}
+th{font:600 11px/1.2 var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);background:var(--surface-2);position:sticky;top:0;z-index:2;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td.l,th.l{text-align:left}
+tr.sum td{font-weight:600;border-top:2px solid var(--ink);background:var(--surface-2)}
+.grp th{background:var(--surface);color:var(--ink);font-family:var(--f-display);font-size:14px;letter-spacing:.08em;text-align:left;border-bottom:2px solid var(--ink)}
+.grp th.calc{border-left:2px solid var(--ink)}
+td.calc-start,th.calc-start{border-left:2px solid var(--ink)}
+tbody tr:hover td{background:var(--surface-2)}
+.tblwrap td:first-child,.tblwrap th:first-child{position:sticky;left:0;z-index:1;background:var(--surface)}
+.tblwrap th:first-child{background:var(--surface-2);z-index:3}
+.grp th:first-child{background:var(--surface)}
+tbody tr:hover td:first-child{background:var(--surface-2)}
+tr.sum td:first-child{background:var(--surface-2)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;border:1px solid var(--line);border-radius:6px;background:var(--surface);overflow:hidden}
+.kpi{padding:12px 16px;border-right:1px solid var(--line);min-width:0}
+.kpi:last-child{border-right:0}
+.kpi .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.kpi .v{font:600 30px/1.1 var(--f-display);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.kpi .v small{font:500 14px var(--f-body);margin-left:3px}
+.kpi .s{font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;flex-wrap:wrap}
+.seg button{background:var(--surface);border:0;border-right:1px solid var(--line);padding:7px 9px;font-size:13px;font-weight:500;cursor:pointer;color:var(--ink-2)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.cmp{display:grid;grid-template-columns:minmax(0,310px) minmax(0,1fr);gap:20px;align-items:start}
+@media(min-width:981px){.cmp .rail{position:sticky;top:12px}}
+@media(max-width:980px){.cmp{grid-template-columns:minmax(0,1fr)}}
+.rail{display:flex;flex-direction:column;gap:16px}
+.rp{display:flex;gap:10px;align-items:flex-start;padding:8px 6px;border-radius:4px;cursor:pointer}
+.rp:hover{background:var(--surface-2)}
+.rp input{margin-top:5px;accent-color:var(--ink)}
+.rp b{font-weight:600}
+.rp small{display:block;font-variant-numeric:tabular-nums}
+.dot{flex:none;width:12px;height:12px;border-radius:50%;margin-top:5px;border:2px solid var(--line);background:transparent}
+.stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+.chart-h{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.chart-h select{width:auto;min-width:0;max-width:100%;flex:0 1 330px;font-weight:600}
+.legend{display:flex;gap:6px 16px;flex-wrap:wrap;margin-bottom:6px;font-size:13px;color:var(--ink-2)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.plot{position:relative;width:100%}
+.plot svg{display:block;max-width:100%;touch-action:pan-y}
+.ax{fill:var(--ink-3);font:11px var(--f-body);font-variant-numeric:tabular-nums}
+.axt{fill:var(--ink-3);font:11px var(--f-body);letter-spacing:.05em;text-transform:uppercase}
+.gl{stroke:var(--grid);stroke-width:1}
+.base{stroke:var(--line);stroke-width:1}
+.ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.refl{stroke:var(--ink-2);stroke-width:1.5;stroke-dasharray:5 4;fill:none}
+.lab{fill:var(--ink-2);font:600 12px var(--f-body)}
+.xh{stroke:var(--ink-3);stroke-width:1}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--ink-3);border-radius:4px;padding:8px 10px;font-size:13px;z-index:5;
+  box-shadow:0 4px 14px rgba(0,0,0,.18);min-width:140px;max-width:260px}
+.tip .th{font-weight:600;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.tip div.r{display:flex;gap:8px;align-items:center;justify-content:space-between;font-variant-numeric:tabular-nums}
+.tip div.r span:first-child{display:flex;gap:6px;align-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tip i{width:9px;height:9px;border-radius:50%;flex:none}
+.empty{padding:28px 16px;text-align:center;color:var(--ink-3)}
+.pill{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:3px;padding:2px 6px;color:var(--ink-2)}
+.pill.warn{color:var(--warn);border-color:var(--warn);margin-left:6px}
+tr.ex td{opacity:.5}
+.sh{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.sh .dot{margin:0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal .card{width:min(680px,100%);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
+textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:4px;background:var(--surface-2);padding:8px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:4px;font-weight:500;z-index:60}
+@media(max-width:560px){.top{border-bottom:0}.tabs{order:3;flex:1 1 100%;border-bottom:2px solid var(--ink)}.tab{font-size:16px;padding:10px 9px 8px}.top .btn{margin-left:auto}.brand{padding-bottom:0}}
+@media(prefers-reduced-motion:no-preference){.tab,.btn{transition:opacity .12s,border-color .12s}}
+</style>
+
+<div class="page">
+  <header class="top">
+    <div class="brand">Analisi <span>Gare</span></div>
+    <nav class="tabs" role="tablist" aria-label="Sezioni">
+      <button class="tab" role="tab" data-view="confronto" aria-selected="true">Confronto</button>
+      <button class="tab" role="tab" data-view="scheda" aria-selected="false">Scheda</button>
+      <button class="tab" role="tab" data-view="gare" aria-selected="false">Attività &amp; importa</button>
+    </nav>
+    <button class="btn ghost sm" id="btnData">Salva / ripristina dati</button>
+  </header>
+  <main id="main"></main>
+</div>
+<div id="overlay"></div>
+<div id="toast" class="toast" role="status" hidden=""></div>
+
+<script id="embed" type="application/json">{"app":"analisi-gare","version":2,"rev":1794296452934,"races":[{"id":"rmw96ddw6m9ew","name":"Milano 21k","date":"2025-11-23","location":"Milano","kind":"gara","type":"mezza","distanceKm":21.0975,"source":"csv","laps":[{"n":1,"time":336,"dist":1,"hr":148,"hrMax":154,"ascent":14,"descent":11,"power":290,"wkg":3.69,"powerMax":297,"wkgMax":3.78,"cadence":176,"cadenceMax":178,"stride":0.99,"cal":67,"bestPace":336},{"n":2,"time":323,"dist":1,"hr":152,"hrMax":157,"ascent":10,"descent":13,"power":297,"wkg":3.78,"powerMax":314,"wkgMax":4,"cadence":176,"cadenceMax":176,"stride":1.04,"cal":67,"bestPace":314},{"n":3,"time":305,"dist":1,"hr":157,"hrMax":164,"ascent":15,"descent":13,"power":314,"wkg":4,"powerMax":340,"wkgMax":4.33,"cadence":176,"cadenceMax":178,"stride":1.09,"cal":67,"bestPace":293},{"n":4,"time":301,"dist":1,"hr":165,"hrMax":169,"ascent":9,"descent":10,"power":318,"wkg":4.05,"powerMax":341,"wkgMax":4.34,"cadence":176,"cadenceMax":182,"stride":1.11,"cal":70,"bestPace":293},{"n":5,"time":306,"dist":1,"hr":168,"hrMax":173,"ascent":10,"descent":12,"power":314,"wkg":4.01,"powerMax":346,"wkgMax":4.41,"cadence":176,"cadenceMax":178,"stride":1.1,"cal":73,"bestPace":263},{"n":6,"time":312,"dist":1,"hr":165,"hrMax":171,"ascent":9,"descent":7,"power":315,"wkg":4.01,"powerMax":341,"wkgMax":4.34,"cadence":176,"cadenceMax":178,"stride":1.08,"cal":73,"bestPace":302},{"n":7,"time":306,"dist":1,"hr":164,"hrMax":168,"ascent":20,"descent":22,"power":313,"wkg":3.99,"powerMax":326,"wkgMax":4.15,"cadence":176,"cadenceMax":176,"stride":1.09,"cal":70,"bestPace":304},{"n":8,"time":310,"dist":1,"hr":164,"hrMax":168,"ascent":12,"descent":8,"power":315,"wkg":4.02,"powerMax":348,"wkgMax":4.43,"cadence":176,"cadenceMax":176,"stride":1.08,"cal":71,"bestPace":298},{"n":9,"time":313,"dist":1,"hr":164,"hrMax":169,"ascent":18,"descent":23,"power":315,"wkg":4.01,"powerMax":337,"wkgMax":4.29,"cadence":174,"cadenceMax":178,"stride":1.06,"cal":72,"bestPace":293},{"n":10,"time":317,"dist":1,"hr":161,"hrMax":164,"ascent":16,"descent":8,"power":303,"wkg":3.86,"powerMax":333,"wkgMax":4.24,"cadence":174,"cadenceMax":178,"stride":1.03,"cal":71,"bestPace":286},{"n":11,"time":314,"dist":1,"hr":166,"hrMax":168,"ascent":8,"descent":5,"power":309,"wkg":3.93,"powerMax":359,"wkgMax":4.57,"cadence":174,"cadenceMax":178,"stride":1.07,"cal":74,"bestPace":283},{"n":12,"time":308,"dist":1,"hr":165,"hrMax":168,"ascent":5,"descent":11,"power":307,"wkg":3.91,"powerMax":332,"wkgMax":4.23,"cadence":178,"cadenceMax":178,"stride":1.08,"cal":72,"bestPace":299},{"n":13,"time":312,"dist":1,"hr":165,"hrMax":169,"ascent":5,"descent":7,"power":310,"wkg":3.95,"powerMax":322,"wkgMax":4.1,"cadence":176,"cadenceMax":178,"stride":1.07,"cal":73,"bestPace":309},{"n":14,"time":308,"dist":1,"hr":165,"hrMax":168,"ascent":8,"descent":11,"power":306,"wkg":3.9,"powerMax":322,"wkgMax":4.1,"cadence":176,"cadenceMax":178,"stride":1.07,"cal":72,"bestPace":304},{"n":15,"time":323,"dist":1,"hr":165,"hrMax":168,"ascent":17,"descent":17,"power":299,"wkg":3.8,"powerMax":328,"wkgMax":4.18,"cadence":174,"cadenceMax":178,"stride":1.02,"cal":75,"bestPace":303},{"n":16,"time":313,"dist":1,"hr":166,"hrMax":171,"ascent":14,"descent":14,"power":311,"wkg":3.96,"powerMax":339,"wkgMax":4.32,"cadence":176,"cadenceMax":178,"stride":1.06,"cal":74,"bestPace":284},{"n":17,"time":320,"dist":1,"hr":163,"hrMax":167,"ascent":9,"descent":11,"power":306,"wkg":3.9,"powerMax":326,"wkgMax":4.15,"cadence":176,"cadenceMax":178,"stride":1.05,"cal":74,"bestPace":307},{"n":18,"time":326,"dist":1,"hr":164,"hrMax":168,"ascent":7,"descent":6,"power":304,"wkg":3.87,"powerMax":315,"wkgMax":4.01,"cadence":176,"cadenceMax":178,"stride":1.02,"cal":75,"bestPace":319},{"n":19,"time":319,"dist":1,"hr":166,"hrMax":174,"ascent":14,"descent":10,"power":299,"wkg":3.81,"powerMax":322,"wkgMax":4.1,"cadence":176,"cadenceMax":178,"stride":1.04,"cal":75,"bestPace":310},{"n":20,"time":297,"dist":1,"hr":172,"hrMax":175,"ascent":13,"descent":15,"power":318,"wkg":4.05,"powerMax":372,"wkgMax":4.74,"cadence":178,"cadenceMax":180,"stride":1.12,"cal":74,"bestPace":250},{"n":21,"time":300,"dist":1.39,"hr":174,"hrMax":177,"ascent":29,"descent":21,"power":322,"wkg":4.1,"powerMax":348,"wkgMax":4.43,"cadence":180,"cadenceMax":182,"stride":1.09,"cal":75,"bestPace":291}],"added":1794223542678,"elev":[131,130.2,129.4,129.5,128.9,127.6,128,129.3,129.4,129.7,130.5,131.3,130.4,130.3,130.6,130.9,130.5,130.4,130.6,129.9,129,129.4,130.6,130.6,131.9,133.7,134.4,133.9,134.4,133.9,132.8,131.6,131.8,131.7,131.5,131.8,132.1,131.8,131,130.2,129.5,128.5,127.5,127.4,127.6,126.5,127.3,127.9,127.7,127.7,128.5,127.4,127.2,126.9,127.4,128,129,130,130.4,129.9,129.3,130,129.7,129.2,129.1,130.5,129.8,129.7,130.4,130.5,129.6,129.2,128.4,128.1,128.7,129.1,128.8,129.9,131.3,131.8,131.5,131,131.7,130.7,130,129.6,130.7,129.5,128.7,128.3,127.9,127.9,128,129.6,130.4,131.3,131.8,132.4,132.4,132.3,133.1,133.5,133.9,133.9,134.4,134.6,134.7,135.3,136.3,136.3,137.1,137.9,138.3,137.1,136.8,135.2,133.6,132.1,132.2,131.9,131.3,130.7,129.7,128.8,127.6,126.7,126.5,127.2,127.4,128.4,129.4,129.7,128.3,128.1,127.8,127.3,127,127.6,127.3,128.3,127.7,126.4,125.7,125.6,124,125.4,126.4,127.3,127.6,126,124.2,124.2,123.4,121.8,123.3,124.5,124.5,125,126.2,125.8,124.8,124.9,125,124.7,125.5,125.6,124.2,123.4,122.5,120.9,120.7,121.3,121.2,121.5,121.9,121.9,123.1,123.4,124.2,124,124.5,123.3,123,122,122.3,122.4,123.8,125.6,127.1,128.5,130.2,130.8,130.4,130.1,129.5,128.6,128.3,128.6,128.1,127.8,128.8,129.5,129.4,131.2,131.5,129.4,128.6,128.8,126.9,127.1,128.5,129.3,129.1,130.6],"elevStep":0.1},{"id":"rmw96ffq0z9vk","name":"Mezza del Lago Maggiore","date":"2026-03-08","location":"Stresa","kind":"gara","type":"mezza","distanceKm":21.0975,"source":"csv","laps":[{"n":1,"time":309.4,"dist":1,"hr":148,"hrMax":162,"ascent":0,"descent":0,"power":350,"wkg":4.46,"powerMax":391,"wkgMax":4.98,"cadence":175,"cadenceMax":180,"gct":251,"stride":1.09,"vo":8.6,"vr":7.9,"cal":70,"gap":311,"bestPace":287},{"n":2,"time":312.2,"dist":1,"hr":165,"hrMax":175,"ascent":17,"descent":10,"power":366,"wkg":4.66,"powerMax":412,"wkgMax":5.25,"cadence":176,"cadenceMax":181,"gct":251,"stride":1.09,"vo":8.6,"vr":7.9,"cal":77,"gap":306,"bestPace":267},{"n":3,"time":306.3,"dist":1,"hr":163,"hrMax":167,"ascent":2,"descent":5,"power":352,"wkg":4.48,"powerMax":382,"wkgMax":4.87,"cadence":176,"cadenceMax":179,"gct":248,"stride":1.11,"vo":8.7,"vr":7.8,"cal":74,"gap":306,"bestPace":277},{"n":4,"time":306.1,"dist":1,"hr":164,"hrMax":166,"ascent":0,"descent":0,"power":351,"wkg":4.47,"powerMax":362,"wkgMax":4.61,"cadence":176,"cadenceMax":183,"gct":249,"stride":1.1,"vo":8.6,"vr":7.8,"cal":75,"gap":307,"bestPace":303},{"n":5,"time":312.6,"dist":1,"hr":164,"hrMax":169,"ascent":9,"descent":1,"power":364,"wkg":4.64,"powerMax":412,"wkgMax":5.25,"cadence":177,"cadenceMax":180,"gct":249,"stride":1.09,"vo":8.6,"vr":7.8,"cal":76,"gap":305,"bestPace":299},{"n":6,"time":308.8,"dist":1,"hr":164,"hrMax":169,"ascent":4,"descent":9,"power":345,"wkg":4.39,"powerMax":390,"wkgMax":4.97,"cadence":177,"cadenceMax":182,"gct":250,"stride":1.08,"vo":8.5,"vr":7.9,"cal":75,"gap":313,"bestPace":273},{"n":7,"time":305,"dist":1,"hr":167,"hrMax":170,"ascent":0,"descent":0,"power":352,"wkg":4.48,"powerMax":369,"wkgMax":4.7,"cadence":178,"cadenceMax":182,"gct":247,"stride":1.1,"vo":8.5,"vr":7.8,"cal":75,"gap":306,"bestPace":297},{"n":8,"time":314.8,"dist":1,"hr":167,"hrMax":173,"ascent":8,"descent":0,"power":354,"wkg":4.51,"powerMax":390,"wkgMax":4.97,"cadence":176,"cadenceMax":180,"gct":250,"stride":1.06,"vo":8.4,"vr":7.9,"cal":77,"gap":311,"bestPace":307},{"n":9,"time":315.4,"dist":1,"hr":165,"hrMax":170,"ascent":3,"descent":9,"power":337,"wkg":4.29,"powerMax":413,"wkgMax":5.26,"cadence":177,"cadenceMax":181,"gct":250,"stride":1.07,"vo":8.4,"vr":7.9,"cal":76,"gap":320,"bestPace":300},{"n":10,"time":306.5,"dist":1,"hr":167,"hrMax":170,"ascent":0,"descent":2,"power":351,"wkg":4.47,"powerMax":367,"wkgMax":4.68,"cadence":179,"cadenceMax":182,"gct":246,"stride":1.09,"vo":8.4,"vr":7.7,"cal":76,"gap":306,"bestPace":301},{"n":11,"time":315.5,"dist":1,"hr":170,"hrMax":178,"ascent":7,"descent":0,"power":357,"wkg":4.55,"powerMax":468,"wkgMax":5.96,"cadence":177,"cadenceMax":183,"gct":249,"stride":1.07,"vo":8.4,"vr":7.9,"cal":79,"gap":310,"bestPace":299},{"n":12,"time":298.8,"dist":1,"hr":172,"hrMax":176,"ascent":0,"descent":6,"power":354,"wkg":4.51,"powerMax":389,"wkgMax":4.96,"cadence":180,"cadenceMax":184,"gct":243,"stride":1.11,"vo":8.4,"vr":7.6,"cal":76,"gap":303,"bestPace":287},{"n":13,"time":306.6,"dist":1,"hr":172,"hrMax":177,"ascent":1,"descent":2,"power":360,"wkg":4.59,"powerMax":385,"wkgMax":4.9,"cadence":179,"cadenceMax":182,"gct":246,"stride":1.09,"vo":8.4,"vr":7.7,"cal":78,"gap":307,"bestPace":299},{"n":14,"time":308.9,"dist":1,"hr":173,"hrMax":181,"ascent":0,"descent":0,"power":355,"wkg":4.52,"powerMax":370,"wkgMax":4.71,"cadence":179,"cadenceMax":184,"gct":246,"stride":1.08,"vo":8.3,"vr":7.7,"cal":79,"gap":310,"bestPace":303},{"n":15,"time":308.1,"dist":1,"hr":174,"hrMax":180,"ascent":5,"descent":1,"power":364,"wkg":4.64,"powerMax":386,"wkgMax":4.92,"cadence":179,"cadenceMax":184,"gct":246,"stride":1.08,"vo":8.3,"vr":7.7,"cal":79,"gap":306,"bestPace":302},{"n":16,"time":307.2,"dist":1,"hr":173,"hrMax":177,"ascent":0,"descent":4,"power":352,"wkg":4.48,"powerMax":374,"wkgMax":4.76,"cadence":179,"cadenceMax":186,"gct":245,"stride":1.09,"vo":8.4,"vr":7.7,"cal":77,"gap":309,"bestPace":292},{"n":17,"time":313.6,"dist":1,"hr":176,"hrMax":182,"ascent":4,"descent":0,"power":364,"wkg":4.64,"powerMax":391,"wkgMax":4.98,"cadence":179,"cadenceMax":184,"gct":247,"stride":1.07,"vo":8.3,"vr":7.8,"cal":81,"gap":310,"bestPace":305},{"n":18,"time":312.8,"dist":1,"hr":178,"hrMax":184,"ascent":9,"descent":0,"power":364,"wkg":4.64,"powerMax":410,"wkgMax":5.22,"cadence":179,"cadenceMax":184,"gct":248,"stride":1.06,"vo":8.3,"vr":7.8,"cal":82,"gap":309,"bestPace":279},{"n":19,"time":306.5,"dist":1,"hr":174,"hrMax":181,"ascent":0,"descent":10,"power":347,"wkg":4.42,"powerMax":387,"wkgMax":4.93,"cadence":180,"cadenceMax":186,"gct":244,"stride":1.09,"vo":8.3,"vr":7.6,"cal":78,"gap":311,"bestPace":292},{"n":20,"time":310.6,"dist":1,"hr":177,"hrMax":182,"ascent":8,"descent":5,"power":364,"wkg":4.64,"powerMax":433,"wkgMax":5.52,"cadence":180,"cadenceMax":186,"gct":247,"stride":1.06,"vo":8.2,"vr":7.8,"cal":80,"gap":311,"bestPace":256},{"n":21,"time":293.6,"dist":1,"hr":181,"hrMax":187,"ascent":2,"descent":8,"power":364,"wkg":4.64,"powerMax":421,"wkgMax":5.36,"cadence":184,"cadenceMax":188,"gct":237,"stride":1.12,"vo":8.2,"vr":7.4,"cal":80,"gap":295,"bestPace":268},{"n":22,"time":70.6,"dist":0.27,"hr":179,"hrMax":182,"ascent":0,"descent":3,"power":373,"wkg":4.75,"powerMax":405,"wkgMax":5.16,"cadence":187,"cadenceMax":189,"gct":228,"stride":1.17,"vo":8.2,"vr":7,"cal":19,"gap":280,"bestPace":261}],"added":1794223638360,"elev":[198.1,198,198.1,198.1,198.2,198.5,198.7,198.9,199.1,199.3,199.6,200.3,201.8,204.1,207,209.9,211.5,211.4,210.1,207.7,205.1,203.4,202.8,202.8,202.8,202.8,202.6,202.1,201.6,201.2,201.2,201.3,201.3,201.4,201.5,201.6,201.7,201.8,201.9,201.9,202,201.9,201.8,201.5,201.3,201.3,201.9,203.2,205.1,207.5,209.8,211,211,209.8,208,206.2,204.9,204.4,204.4,204.7,204.8,204.9,205.1,205.2,205.2,205.2,205.2,205.2,205.2,205.3,205.4,205.6,205.9,206.1,206.6,207.5,208.6,209.8,211,211.2,210.2,209,207.6,206.3,205.7,205.7,205.7,205.9,205.7,205.5,205.4,205.3,204.9,204.9,204.8,204.6,204.6,204.6,204.6,204.6,204.6,204.5,204.4,204.3,204.3,204.4,205.4,206.8,208.1,209.4,210.3,209.8,209,208,207,206.6,206.2,205.8,205.4,205.1,204.8,204.8,205.2,205.3,205.3,205,204.7,204.3,204.1,204,204,203.9,203.9,203.7,203.6,203.6,203.6,203.6,203.9,204.2,204.6,205.1,205.6,206.2,206.8,207.4,208.1,208.4,208.4,208.2,207.7,207,206.4,205.9,205.6,205.3,205.2,204.9,204.4,204,203.6,203.2,203.1,203.3,203.5,203.8,204.3,205,205.9,206.9,208.1,209.2,210.5,211.7,212.7,213.7,214.6,215.4,216.1,216.6,216.9,217,216.8,216.3,215.6,214.5,213.1,211.3,209.6,208.6,208.6,209.1,210,211,212.1,212.8,213.4,214,213.6,212.3,211.1,209.7,208.3,207.9,208.2,208.4,208.9,208.9,208.2,206.8,205.2,203.9,202.7],"elevStep":0.1},{"id":"rmw96g9z8tlcj","name":"Maratona di Roma","date":"2026-03-22","location":"Roma","kind":"gara","type":"maratona","distanceKm":42.195,"source":"csv","laps":[{"n":1,"time":358,"dist":1,"hr":140,"hrMax":156,"ascent":5,"descent":7,"power":307,"wkg":3.91,"powerMax":412,"wkgMax":5.25,"cadence":171,"cadenceMax":174,"gct":268,"stride":0.98,"vo":8.5,"vr":8.7,"cal":76,"gap":358,"bestPace":340},{"n":2,"time":365,"dist":1,"hr":145,"hrMax":153,"ascent":3,"descent":9,"power":296,"wkg":3.77,"powerMax":350,"wkgMax":4.46,"cadence":171,"cadenceMax":174,"gct":269,"stride":0.97,"vo":8.4,"vr":8.8,"cal":79,"gap":368,"bestPace":338},{"n":3,"time":381.7,"dist":1,"hr":139,"hrMax":144,"ascent":0,"descent":1,"power":284,"wkg":3.62,"powerMax":291,"wkgMax":3.71,"cadence":171,"cadenceMax":174,"gct":271,"stride":0.92,"vo":8.2,"vr":8.9,"cal":79,"gap":383,"bestPace":373},{"n":4,"time":378.1,"dist":1,"hr":145,"hrMax":150,"ascent":14,"descent":1,"power":313,"wkg":3.99,"powerMax":340,"wkgMax":4.33,"cadence":171,"cadenceMax":176,"gct":270,"stride":0.92,"vo":8.2,"vr":8.9,"cal":81,"gap":368,"bestPace":366},{"n":5,"time":376.2,"dist":1,"hr":140,"hrMax":151,"ascent":4,"descent":10,"power":292,"wkg":3.72,"powerMax":363,"wkgMax":4.62,"cadence":171,"cadenceMax":177,"gct":271,"stride":0.93,"vo":8.3,"vr":8.9,"cal":75,"gap":380,"bestPace":366},{"n":6,"time":393,"dist":1,"hr":141,"hrMax":148,"ascent":4,"descent":1,"power":280,"wkg":3.57,"powerMax":341,"wkgMax":4.34,"cadence":165,"cadenceMax":176,"gct":275,"stride":0.91,"vo":8.2,"vr":9,"cal":79,"gap":387,"bestPace":363},{"n":7,"time":383.8,"dist":1,"hr":140,"hrMax":147,"ascent":0,"descent":8,"power":280,"wkg":3.57,"powerMax":321,"wkgMax":4.09,"cadence":171,"cadenceMax":177,"gct":272,"stride":0.92,"vo":8.2,"vr":9,"cal":77,"gap":388,"bestPace":348},{"n":8,"time":382.7,"dist":1,"hr":141,"hrMax":147,"ascent":6,"descent":4,"power":289,"wkg":3.68,"powerMax":350,"wkgMax":4.46,"cadence":171,"cadenceMax":176,"gct":271,"stride":0.91,"vo":8.2,"vr":9,"cal":75,"gap":382,"bestPace":340},{"n":9,"time":360.4,"dist":1,"hr":143,"hrMax":153,"ascent":5,"descent":3,"power":312,"wkg":3.97,"powerMax":382,"wkgMax":4.87,"cadence":172,"cadenceMax":246,"gct":267,"stride":0.96,"vo":8.3,"vr":8.7,"cal":74,"gap":363,"bestPace":313},{"n":10,"time":389.8,"dist":1,"hr":141,"hrMax":148,"ascent":2,"descent":0,"power":290,"wkg":3.69,"powerMax":319,"wkgMax":4.06,"cadence":169,"cadenceMax":176,"gct":274,"stride":0.92,"vo":8.3,"vr":9,"cal":77,"gap":384,"bestPace":357},{"n":11,"time":382,"dist":1,"hr":142,"hrMax":145,"ascent":2,"descent":0,"power":292,"wkg":3.72,"powerMax":315,"wkgMax":4.01,"cadence":172,"cadenceMax":176,"gct":270,"stride":0.91,"vo":8.1,"vr":8.9,"cal":76,"gap":382,"bestPace":365},{"n":12,"time":380.2,"dist":1,"hr":142,"hrMax":146,"ascent":1,"descent":1,"power":288,"wkg":3.67,"powerMax":306,"wkgMax":3.9,"cadence":172,"cadenceMax":177,"gct":270,"stride":0.92,"vo":8.2,"vr":8.9,"cal":75,"gap":379,"bestPace":363},{"n":13,"time":381.7,"dist":1,"hr":141,"hrMax":146,"ascent":2,"descent":0,"power":290,"wkg":3.69,"powerMax":327,"wkgMax":4.17,"cadence":172,"cadenceMax":178,"gct":270,"stride":0.92,"vo":8.2,"vr":8.9,"cal":74,"gap":380,"bestPace":361},{"n":14,"time":377.9,"dist":1,"hr":146,"hrMax":155,"ascent":2,"descent":7,"power":296,"wkg":3.77,"powerMax":330,"wkgMax":4.2,"cadence":169,"cadenceMax":174,"gct":273,"stride":0.95,"vo":8.5,"vr":8.9,"cal":77,"gap":376,"bestPace":350},{"n":15,"time":368.1,"dist":1,"hr":146,"hrMax":150,"ascent":1,"descent":0,"power":303,"wkg":3.86,"powerMax":341,"wkgMax":4.34,"cadence":172,"cadenceMax":176,"gct":269,"stride":0.95,"vo":8.3,"vr":8.8,"cal":75,"gap":370,"bestPace":341},{"n":16,"time":390,"dist":1,"hr":145,"hrMax":151,"ascent":2,"descent":0,"power":290,"wkg":3.69,"powerMax":346,"wkgMax":4.41,"cadence":168,"cadenceMax":178,"gct":275,"stride":0.92,"vo":8.3,"vr":9.1,"cal":77,"gap":389,"bestPace":350},{"n":17,"time":376,"dist":1,"hr":143,"hrMax":146,"ascent":1,"descent":3,"power":288,"wkg":3.67,"powerMax":327,"wkgMax":4.17,"cadence":172,"cadenceMax":176,"gct":270,"stride":0.93,"vo":8.2,"vr":8.9,"cal":74,"gap":378,"bestPace":348},{"n":18,"time":374.7,"dist":1,"hr":146,"hrMax":151,"ascent":3,"descent":2,"power":293,"wkg":3.73,"powerMax":347,"wkgMax":4.42,"cadence":170,"cadenceMax":175,"gct":273,"stride":0.93,"vo":8.3,"vr":9,"cal":76,"gap":379,"bestPace":348},{"n":19,"time":374.1,"dist":1,"hr":150,"hrMax":155,"ascent":0,"descent":1,"power":299,"wkg":3.81,"powerMax":314,"wkgMax":4,"cadence":172,"cadenceMax":177,"gct":269,"stride":0.93,"vo":8.2,"vr":8.8,"cal":79,"gap":374,"bestPace":358},{"n":20,"time":390.9,"dist":1,"hr":145,"hrMax":151,"ascent":1,"descent":2,"power":279,"wkg":3.55,"powerMax":332,"wkgMax":4.23,"cadence":171,"cadenceMax":178,"gct":273,"stride":0.9,"vo":8.1,"vr":9.1,"cal":75,"gap":392,"bestPace":346},{"n":21,"time":370.1,"dist":1,"hr":149,"hrMax":154,"ascent":5,"descent":0,"power":301,"wkg":3.83,"powerMax":361,"wkgMax":4.6,"cadence":172,"cadenceMax":175,"gct":269,"stride":0.94,"vo":8.3,"vr":8.8,"cal":76,"gap":369,"bestPace":326},{"n":22,"time":380.4,"dist":1,"hr":149,"hrMax":156,"ascent":0,"descent":6,"power":287,"wkg":3.66,"powerMax":352,"wkgMax":4.48,"cadence":170,"cadenceMax":178,"gct":269,"stride":0.93,"vo":8.2,"vr":8.9,"cal":76,"gap":382,"bestPace":327},{"n":23,"time":382.3,"dist":1,"hr":150,"hrMax":155,"ascent":1,"descent":0,"power":291,"wkg":3.71,"powerMax":327,"wkgMax":4.17,"cadence":171,"cadenceMax":176,"gct":270,"stride":0.91,"vo":8.2,"vr":8.9,"cal":76,"gap":382,"bestPace":356},{"n":24,"time":371.3,"dist":1,"hr":152,"hrMax":156,"ascent":2,"descent":1,"power":294,"wkg":3.75,"powerMax":359,"wkgMax":4.57,"cadence":172,"cadenceMax":181,"gct":270,"stride":0.92,"vo":8.2,"vr":8.9,"cal":78,"gap":378,"bestPace":327},{"n":25,"time":379.1,"dist":1,"hr":152,"hrMax":157,"ascent":1,"descent":1,"power":287,"wkg":3.66,"powerMax":316,"wkgMax":4.03,"cadence":172,"cadenceMax":176,"gct":270,"stride":0.91,"vo":8.1,"vr":8.9,"cal":78,"gap":382,"bestPace":362},{"n":26,"time":373.5,"dist":1,"hr":151,"hrMax":157,"ascent":3,"descent":3,"power":291,"wkg":3.71,"powerMax":366,"wkgMax":4.66,"cadence":173,"cadenceMax":176,"gct":268,"stride":0.92,"vo":8.1,"vr":8.8,"cal":74,"gap":376,"bestPace":350},{"n":27,"time":374.9,"dist":1,"hr":150,"hrMax":156,"ascent":1,"descent":0,"power":295,"wkg":3.76,"powerMax":309,"wkgMax":3.94,"cadence":173,"cadenceMax":178,"gct":267,"stride":0.93,"vo":8.1,"vr":8.8,"cal":76,"gap":371,"bestPace":361},{"n":28,"time":375.3,"dist":1,"hr":153,"hrMax":157,"ascent":1,"descent":1,"power":290,"wkg":3.69,"powerMax":305,"wkgMax":3.89,"cadence":173,"cadenceMax":178,"gct":267,"stride":0.92,"vo":8.1,"vr":8.8,"cal":78,"gap":378,"bestPace":361},{"n":29,"time":392,"dist":1,"hr":153,"hrMax":161,"ascent":4,"descent":4,"power":286,"wkg":3.64,"powerMax":380,"wkgMax":4.84,"cadence":172,"cadenceMax":176,"gct":272,"stride":0.89,"vo":8.1,"vr":9,"cal":78,"gap":390,"bestPace":366},{"n":30,"time":420.4,"dist":1,"hr":147,"hrMax":153,"ascent":0,"descent":1,"power":255,"wkg":3.25,"powerMax":304,"wkgMax":3.87,"cadence":161,"cadenceMax":178,"gct":273,"stride":0.87,"vo":7.8,"vr":9,"cal":77,"gap":423,"bestPace":363},{"n":31,"time":369.2,"dist":1,"hr":154,"hrMax":158,"ascent":1,"descent":3,"power":297,"wkg":3.78,"powerMax":350,"wkgMax":4.46,"cadence":173,"cadenceMax":178,"gct":267,"stride":0.94,"vo":8.2,"vr":8.7,"cal":76,"gap":372,"bestPace":322},{"n":32,"time":402,"dist":1,"hr":151,"hrMax":155,"ascent":0,"descent":1,"power":274,"wkg":3.49,"powerMax":302,"wkgMax":3.85,"cadence":169,"cadenceMax":177,"gct":272,"stride":0.89,"vo":8.1,"vr":9.1,"cal":80,"gap":399,"bestPace":362},{"n":33,"time":419.6,"dist":1,"hr":146,"hrMax":152,"ascent":1,"descent":0,"power":260,"wkg":3.31,"powerMax":323,"wkgMax":4.11,"cadence":158,"cadenceMax":176,"gct":272,"stride":0.88,"vo":8,"vr":9.1,"cal":78,"gap":422,"bestPace":347},{"n":34,"time":395.3,"dist":1,"hr":151,"hrMax":155,"ascent":5,"descent":0,"power":289,"wkg":3.68,"powerMax":357,"wkgMax":4.55,"cadence":172,"cadenceMax":176,"gct":271,"stride":0.89,"vo":8.1,"vr":9,"cal":80,"gap":386,"bestPace":340},{"n":35,"time":431.4,"dist":1,"hr":148,"hrMax":153,"ascent":0,"descent":0,"power":254,"wkg":3.24,"powerMax":322,"wkgMax":4.1,"cadence":157,"cadenceMax":178,"gct":271,"stride":0.87,"vo":7.9,"vr":9.1,"cal":79,"gap":431,"bestPace":354},{"n":36,"time":401.7,"dist":1,"hr":147,"hrMax":152,"ascent":1,"descent":7,"power":276,"wkg":3.52,"powerMax":316,"wkgMax":4.03,"cadence":171,"cadenceMax":179,"gct":274,"stride":0.88,"vo":8,"vr":9.2,"cal":80,"gap":403,"bestPace":358},{"n":37,"time":419.4,"dist":1,"hr":148,"hrMax":155,"ascent":4,"descent":3,"power":269,"wkg":3.43,"powerMax":357,"wkgMax":4.55,"cadence":162,"cadenceMax":177,"gct":274,"stride":0.88,"vo":8,"vr":9.1,"cal":77,"gap":416,"bestPace":355},{"n":38,"time":396.8,"dist":1,"hr":152,"hrMax":156,"ascent":2,"descent":0,"power":279,"wkg":3.55,"powerMax":331,"wkgMax":4.22,"cadence":171,"cadenceMax":174,"gct":275,"stride":0.88,"vo":8.1,"vr":9.2,"cal":77,"gap":397,"bestPace":361},{"n":39,"time":427.7,"dist":1,"hr":149,"hrMax":155,"ascent":7,"descent":2,"power":270,"wkg":3.44,"powerMax":339,"wkgMax":4.32,"cadence":161,"cadenceMax":175,"gct":279,"stride":0.86,"vo":8.1,"vr":9.4,"cal":79,"gap":416,"bestPace":368},{"n":40,"time":404.8,"dist":1,"hr":148,"hrMax":156,"ascent":1,"descent":5,"power":273,"wkg":3.48,"powerMax":365,"wkgMax":4.65,"cadence":170,"cadenceMax":178,"gct":277,"stride":0.87,"vo":8,"vr":9.3,"cal":80,"gap":410,"bestPace":307},{"n":41,"time":409,"dist":1,"hr":152,"hrMax":156,"ascent":3,"descent":3,"power":278,"wkg":3.54,"powerMax":372,"wkgMax":4.74,"cadence":165,"cadenceMax":174,"gct":276,"stride":0.9,"vo":8.2,"vr":9.2,"cal":78,"gap":406,"bestPace":338},{"n":42,"time":400,"dist":1,"hr":154,"hrMax":159,"ascent":9,"descent":1,"power":294,"wkg":3.75,"powerMax":380,"wkgMax":4.84,"cadence":170,"cadenceMax":177,"gct":271,"stride":0.89,"vo":8,"vr":9,"cal":82,"gap":385,"bestPace":316},{"n":43,"time":426,"dist":1,"hr":151,"hrMax":167,"ascent":8,"descent":14,"power":274,"wkg":3.49,"powerMax":359,"wkgMax":4.57,"cadence":168,"cadenceMax":177,"gct":280,"stride":0.85,"vo":8,"vr":9.4,"cal":79,"gap":422,"bestPace":327}],"added":1794223677572,"elev":[24,23.8,23.7,23.4,23,22.7,22.9,23.6,23.5,22.8,21.7,20.1,17.9,16.4,16.2,16.8,17.2,17.6,18,17.8,17.5,17.1,16.8,16.6,16.4,16.3,16.2,16.2,16.2,16,16,16.2,16.8,17.9,19.6,21.7,23.8,25.6,27.1,28.4,29.2,30.1,30.7,31.7,32.3,31.8,30.5,29,26.8,24.8,23.7,23.1,22.6,22.2,22.3,22.6,23.2,24,25.2,25,24.2,23.2,22,20.6,20.1,20,19.8,19.6,19.5,19.5,19.8,20.4,21.2,22.2,23.1,23.7,24,23.8,22.9,22.2,21.8,21.4,21.9,23,23.6,23.8,24.1,23.8,23.2,22.9,23,23,23.1,23.2,23.3,23.5,23.8,24,24.4,24.6,24.7,24.8,25,25.1,25.3,25.8,26.3,26.6,26.9,26.9,26.9,26.9,27,27.3,27.7,27.8,27.9,27.8,27.7,27.6,27.6,27.8,27.8,27.9,27.9,27.9,27.9,28.1,28.2,27.7,27.2,26.8,26.4,26.4,26.8,27.2,27.1,26.6,26.1,25.7,25.4,25.5,25.8,26,26.2,26.3,26.3,26.2,26,25.8,25.6,25.4,25.4,25.9,26.2,26.6,27,27.4,27.4,27.8,28.3,28.6,28.4,28.1,27.7,27,26.4,26.2,26,25.8,25.7,25.6,25.6,25.6,25.9,26.5,27,27.3,27.4,27,26.5,26,25.6,25.5,25.5,25.4,25.4,25.5,25.6,25.8,26,26.2,26.2,25.9,25.6,25.2,24.7,24.3,24.2,24.1,24.1,24.2,24.4,24.6,25,25.5,26.2,27,27.9,28.6,29.1,29.4,29.3,28.6,27.8,26.8,25.6,24.6,23.9,23.4,23.1,23.1,23.1,23.1,23.2,23.5,23.7,23.8,23.9,23.9,23.6,23.5,23.5,23.6,23.9,24.3,24.6,24.7,24.9,25.2,25.4,25.7,25.9,26,25.8,25.5,25.4,25.2,25.2,25.1,25,24.8,24.7,25.1,25.3,25.3,25.4,25.4,25,24.8,24.8,24.9,25,25,25.1,25.1,25.2,25.4,25.6,25.8,25.8,25.6,25.3,25.1,25,25,25.2,25.4,25.5,25.5,25.6,25.5,25.5,26.1,26.6,26.6,26.7,26.8,26.3,26.1,26.1,26.2,26.1,25.9,25.8,25.8,25.8,25.9,26,25.8,25.7,25.7,25.8,25.8,26.2,26.4,26.2,25.5,24.7,23.7,22.7,22.1,21.8,21.6,21.6,21.7,21.8,22,22.2,22.4,22.3,22.2,22.1,22.1,22,22.1,22.3,22.6,22.8,23.1,23.5,23.7,23.8,23.9,24.1,24.8,25.4,26,26.8,27.2,27,27.1,27.2,27.3,27.4,27.5,27.6,27.8,27.8,28,28.1,28.2,28.3,28.4,28.5,28.5,28.5,27.9,26.6,24.7,23.4,22,21.3,21.7,22.5,22.6,22.8,22.9,23,23.1,23.5,23.9,24.3,24.5,24.6,24.8,25,25.1,25.2,25.3,25.4,25.7,26.1,27,28,29.3,30.5,31.2,31.2,30.7,29.5,28.2,27,26,25.5,25.3,25.3,25.6,25.9,26.2,26,26.2,26.3,26.3,26.4,26.6,26.2,25.9,25.7,25.6,25.7,25.9,26.2,26.9,27.6,28.1,28.7,29.5,30.7,31.4,31.5,30.7,29.3,27.2,25.2,24,24.3,25.4,25.8,26.7],"elevStep":0.1},{"id":"rmw96gy9u28j5","name":"Maratona di Milano","date":"2026-04-12","location":"Milano","kind":"gara","type":"maratona","distanceKm":42.195,"source":"csv","laps":[{"n":1,"time":356.5,"dist":1,"hr":135,"hrMax":150,"ascent":2,"descent":0,"power":308,"wkg":3.92,"powerMax":345,"wkgMax":4.39,"cadence":173,"cadenceMax":181,"gct":264,"stride":0.97,"vo":8.3,"vr":8.6,"cal":76,"gap":355,"bestPace":326},{"n":2,"time":343.1,"dist":1,"hr":145,"hrMax":153,"ascent":2,"descent":0,"power":323,"wkg":4.11,"powerMax":408,"wkgMax":5.2,"cadence":176,"cadenceMax":180,"gct":258,"stride":0.98,"vo":8.2,"vr":8.3,"cal":77,"gap":345,"bestPace":300},{"n":3,"time":350,"dist":1,"hr":142,"hrMax":146,"ascent":0,"descent":4,"power":318,"wkg":4.05,"powerMax":337,"wkgMax":4.29,"cadence":174,"cadenceMax":178,"gct":262,"stride":0.99,"vo":8.4,"vr":8.4,"cal":78,"gap":351,"bestPace":335},{"n":4,"time":351.2,"dist":1,"hr":143,"hrMax":148,"ascent":0,"descent":4,"power":311,"wkg":3.96,"powerMax":333,"wkgMax":4.24,"cadence":174,"cadenceMax":177,"gct":263,"stride":0.97,"vo":8.3,"vr":8.5,"cal":76,"gap":358,"bestPace":335},{"n":5,"time":347.5,"dist":1,"hr":146,"hrMax":155,"ascent":3,"descent":4,"power":326,"wkg":4.15,"powerMax":370,"wkgMax":4.71,"cadence":174,"cadenceMax":178,"gct":262,"stride":0.99,"vo":8.4,"vr":8.4,"cal":78,"gap":348,"bestPace":336},{"n":6,"time":358.4,"dist":1,"hr":145,"hrMax":159,"ascent":5,"descent":7,"power":315,"wkg":4.01,"powerMax":394,"wkgMax":5.02,"cadence":172,"cadenceMax":183,"gct":265,"stride":0.97,"vo":8.4,"vr":8.6,"cal":78,"gap":358,"bestPace":307},{"n":7,"time":361.5,"dist":1,"hr":142,"hrMax":149,"ascent":0,"descent":0,"power":303,"wkg":3.86,"powerMax":404,"wkgMax":5.15,"cadence":173,"cadenceMax":178,"gct":266,"stride":0.95,"vo":8.2,"vr":8.7,"cal":76,"gap":365,"bestPace":289},{"n":8,"time":352.1,"dist":1,"hr":144,"hrMax":149,"ascent":0,"descent":1,"power":310,"wkg":3.95,"powerMax":362,"wkgMax":4.61,"cadence":174,"cadenceMax":177,"gct":262,"stride":0.98,"vo":8.3,"vr":8.5,"cal":75,"gap":353,"bestPace":305},{"n":9,"time":353,"dist":1,"hr":147,"hrMax":151,"ascent":0,"descent":2,"power":307,"wkg":3.91,"powerMax":348,"wkgMax":4.43,"cadence":174,"cadenceMax":180,"gct":262,"stride":0.97,"vo":8.3,"vr":8.5,"cal":77,"gap":356,"bestPace":326},{"n":10,"time":353.9,"dist":1,"hr":143,"hrMax":146,"ascent":0,"descent":2,"power":305,"wkg":3.89,"powerMax":326,"wkgMax":4.15,"cadence":175,"cadenceMax":178,"gct":261,"stride":0.97,"vo":8.2,"vr":8.5,"cal":74,"gap":354,"bestPace":341},{"n":11,"time":359.6,"dist":1,"hr":143,"hrMax":146,"ascent":1,"descent":0,"power":300,"wkg":3.82,"powerMax":325,"wkgMax":4.14,"cadence":174,"cadenceMax":178,"gct":263,"stride":0.95,"vo":8.2,"vr":8.6,"cal":74,"gap":361,"bestPace":342},{"n":12,"time":363.5,"dist":1,"hr":143,"hrMax":149,"ascent":2,"descent":0,"power":299,"wkg":3.81,"powerMax":328,"wkgMax":4.18,"cadence":173,"cadenceMax":178,"gct":265,"stride":0.94,"vo":8.2,"vr":8.7,"cal":75,"gap":365,"bestPace":340},{"n":13,"time":353.8,"dist":1,"hr":144,"hrMax":152,"ascent":3,"descent":0,"power":311,"wkg":3.96,"powerMax":335,"wkgMax":4.27,"cadence":175,"cadenceMax":178,"gct":261,"stride":0.97,"vo":8.2,"vr":8.5,"cal":74,"gap":351,"bestPace":339},{"n":14,"time":359.7,"dist":1,"hr":143,"hrMax":149,"ascent":1,"descent":0,"power":303,"wkg":3.86,"powerMax":325,"wkgMax":4.14,"cadence":174,"cadenceMax":178,"gct":263,"stride":0.96,"vo":8.2,"vr":8.6,"cal":73,"gap":359,"bestPace":349},{"n":15,"time":361.3,"dist":1,"hr":142,"hrMax":146,"ascent":1,"descent":0,"power":299,"wkg":3.81,"powerMax":318,"wkgMax":4.05,"cadence":174,"cadenceMax":178,"gct":264,"stride":0.95,"vo":8.2,"vr":8.6,"cal":73,"gap":362,"bestPace":354},{"n":16,"time":360,"dist":1,"hr":143,"hrMax":146,"ascent":2,"descent":0,"power":311,"wkg":3.96,"powerMax":377,"wkgMax":4.8,"cadence":175,"cadenceMax":180,"gct":263,"stride":0.94,"vo":8.1,"vr":8.6,"cal":75,"gap":362,"bestPace":312},{"n":17,"time":365.6,"dist":1,"hr":142,"hrMax":146,"ascent":1,"descent":1,"power":296,"wkg":3.77,"powerMax":315,"wkgMax":4.01,"cadence":175,"cadenceMax":178,"gct":264,"stride":0.93,"vo":8.1,"vr":8.6,"cal":73,"gap":366,"bestPace":352},{"n":18,"time":353.7,"dist":1,"hr":147,"hrMax":151,"ascent":1,"descent":0,"power":305,"wkg":3.89,"powerMax":325,"wkgMax":4.14,"cadence":176,"cadenceMax":181,"gct":260,"stride":0.97,"vo":8.2,"vr":8.4,"cal":74,"gap":352,"bestPace":333},{"n":19,"time":355.4,"dist":1,"hr":149,"hrMax":156,"ascent":13,"descent":6,"power":319,"wkg":4.06,"powerMax":433,"wkgMax":5.52,"cadence":175,"cadenceMax":178,"gct":262,"stride":0.96,"vo":8.2,"vr":8.5,"cal":76,"gap":350,"bestPace":348},{"n":20,"time":344.9,"dist":1,"hr":150,"hrMax":154,"ascent":3,"descent":3,"power":312,"wkg":3.97,"powerMax":348,"wkgMax":4.43,"cadence":176,"cadenceMax":180,"gct":258,"stride":0.98,"vo":8.2,"vr":8.3,"cal":73,"gap":347,"bestPace":332},{"n":21,"time":353,"dist":1,"hr":149,"hrMax":155,"ascent":0,"descent":4,"power":311,"wkg":3.96,"powerMax":336,"wkgMax":4.28,"cadence":176,"cadenceMax":180,"gct":259,"stride":0.97,"vo":8.1,"vr":8.4,"cal":73,"gap":353,"bestPace":334},{"n":22,"time":358.5,"dist":1,"hr":150,"hrMax":155,"ascent":0,"descent":1,"power":310,"wkg":3.95,"powerMax":341,"wkgMax":4.34,"cadence":174,"cadenceMax":180,"gct":262,"stride":0.95,"vo":8.1,"vr":8.6,"cal":76,"gap":361,"bestPace":336},{"n":23,"time":353.1,"dist":1,"hr":152,"hrMax":155,"ascent":0,"descent":0,"power":304,"wkg":3.87,"powerMax":320,"wkgMax":4.08,"cadence":177,"cadenceMax":180,"gct":259,"stride":0.96,"vo":8.1,"vr":8.4,"cal":75,"gap":353,"bestPace":332},{"n":24,"time":355,"dist":1,"hr":151,"hrMax":154,"ascent":0,"descent":0,"power":304,"wkg":3.87,"powerMax":327,"wkgMax":4.17,"cadence":177,"cadenceMax":181,"gct":259,"stride":0.95,"vo":8,"vr":8.4,"cal":74,"gap":354,"bestPace":346},{"n":25,"time":372.8,"dist":1,"hr":148,"hrMax":154,"ascent":2,"descent":1,"power":293,"wkg":3.73,"powerMax":323,"wkgMax":4.11,"cadence":175,"cadenceMax":180,"gct":264,"stride":0.91,"vo":7.9,"vr":8.8,"cal":76,"gap":373,"bestPace":349},{"n":26,"time":361.1,"dist":1,"hr":153,"hrMax":159,"ascent":4,"descent":0,"power":306,"wkg":3.9,"powerMax":319,"wkgMax":4.06,"cadence":177,"cadenceMax":181,"gct":259,"stride":0.94,"vo":8,"vr":8.4,"cal":78,"gap":355,"bestPace":345},{"n":27,"time":366.2,"dist":1,"hr":151,"hrMax":155,"ascent":1,"descent":0,"power":300,"wkg":3.82,"powerMax":328,"wkgMax":4.18,"cadence":175,"cadenceMax":180,"gct":264,"stride":0.93,"vo":8,"vr":8.7,"cal":76,"gap":367,"bestPace":347},{"n":28,"time":356,"dist":1,"hr":154,"hrMax":158,"ascent":2,"descent":3,"power":316,"wkg":4.03,"powerMax":340,"wkgMax":4.33,"cadence":176,"cadenceMax":182,"gct":260,"stride":0.95,"vo":8.1,"vr":8.5,"cal":77,"gap":357,"bestPace":339},{"n":29,"time":357.6,"dist":1,"hr":155,"hrMax":159,"ascent":2,"descent":1,"power":315,"wkg":4.01,"powerMax":345,"wkgMax":4.39,"cadence":176,"cadenceMax":182,"gct":261,"stride":0.95,"vo":8.1,"vr":8.5,"cal":80,"gap":358,"bestPace":334},{"n":30,"time":358.1,"dist":1,"hr":155,"hrMax":160,"ascent":0,"descent":1,"power":322,"wkg":4.1,"powerMax":345,"wkgMax":4.39,"cadence":177,"cadenceMax":180,"gct":259,"stride":0.95,"vo":8,"vr":8.4,"cal":78,"gap":357,"bestPace":336},{"n":31,"time":371,"dist":1,"hr":153,"hrMax":157,"ascent":0,"descent":0,"power":289,"wkg":3.68,"powerMax":320,"wkgMax":4.08,"cadence":175,"cadenceMax":180,"gct":266,"stride":0.91,"vo":7.9,"vr":8.8,"cal":75,"gap":375,"bestPace":345},{"n":32,"time":349,"dist":1,"hr":154,"hrMax":157,"ascent":0,"descent":3,"power":327,"wkg":4.17,"powerMax":394,"wkgMax":5.02,"cadence":175,"cadenceMax":181,"gct":258,"stride":1,"vo":8.2,"vr":8.3,"cal":75,"gap":346,"bestPace":304},{"n":33,"time":351.2,"dist":1,"hr":156,"hrMax":160,"ascent":0,"descent":1,"power":324,"wkg":4.13,"powerMax":335,"wkgMax":4.27,"cadence":178,"cadenceMax":182,"gct":257,"stride":0.96,"vo":8,"vr":8.4,"cal":76,"gap":353,"bestPace":341},{"n":34,"time":368.3,"dist":1,"hr":156,"hrMax":161,"ascent":5,"descent":0,"power":309,"wkg":3.94,"powerMax":384,"wkgMax":4.89,"cadence":173,"cadenceMax":184,"gct":259,"stride":0.94,"vo":7.9,"vr":8.4,"cal":79,"gap":361,"bestPace":339},{"n":35,"time":347.3,"dist":1,"hr":156,"hrMax":162,"ascent":1,"descent":9,"power":309,"wkg":3.94,"powerMax":371,"wkgMax":4.73,"cadence":178,"cadenceMax":182,"gct":258,"stride":0.94,"vo":7.9,"vr":8.4,"cal":74,"gap":360,"bestPace":299},{"n":36,"time":359.8,"dist":1,"hr":158,"hrMax":164,"ascent":1,"descent":0,"power":313,"wkg":3.99,"powerMax":419,"wkgMax":5.34,"cadence":177,"cadenceMax":181,"gct":261,"stride":0.93,"vo":7.9,"vr":8.6,"cal":79,"gap":363,"bestPace":297},{"n":37,"time":348.5,"dist":1,"hr":158,"hrMax":161,"ascent":0,"descent":2,"power":320,"wkg":4.08,"powerMax":333,"wkgMax":4.24,"cadence":179,"cadenceMax":184,"gct":256,"stride":0.96,"vo":7.9,"vr":8.3,"cal":76,"gap":351,"bestPace":340},{"n":38,"time":348.1,"dist":1,"hr":160,"hrMax":165,"ascent":2,"descent":3,"power":323,"wkg":4.11,"powerMax":363,"wkgMax":4.62,"cadence":179,"cadenceMax":184,"gct":256,"stride":0.96,"vo":7.9,"vr":8.3,"cal":78,"gap":349,"bestPace":334},{"n":39,"time":354,"dist":1,"hr":163,"hrMax":168,"ascent":1,"descent":1,"power":317,"wkg":4.04,"powerMax":347,"wkgMax":4.42,"cadence":177,"cadenceMax":183,"gct":258,"stride":0.96,"vo":8,"vr":8.4,"cal":82,"gap":352,"bestPace":329},{"n":40,"time":337,"dist":1,"hr":164,"hrMax":166,"ascent":2,"descent":1,"power":334,"wkg":4.25,"powerMax":385,"wkgMax":4.9,"cadence":179,"cadenceMax":183,"gct":254,"stride":0.99,"vo":8.1,"vr":8.1,"cal":79,"gap":338,"bestPace":305},{"n":41,"time":338.5,"dist":1,"hr":163,"hrMax":166,"ascent":1,"descent":2,"power":332,"wkg":4.23,"powerMax":371,"wkgMax":4.73,"cadence":179,"cadenceMax":183,"gct":253,"stride":0.98,"vo":8,"vr":8.1,"cal":79,"gap":339,"bestPace":321},{"n":42,"time":343,"dist":1,"hr":163,"hrMax":165,"ascent":1,"descent":1,"power":321,"wkg":4.09,"powerMax":387,"wkgMax":4.93,"cadence":176,"cadenceMax":184,"gct":253,"stride":0.98,"vo":8,"vr":8.1,"cal":79,"gap":340,"bestPace":307},{"n":43,"time":256.3,"dist":0.76,"hr":163,"hrMax":166,"ascent":1,"descent":0,"power":321,"wkg":4.09,"powerMax":352,"wkgMax":4.48,"cadence":181,"cadenceMax":186,"gct":252,"stride":0.97,"vo":7.9,"vr":8.1,"cal":59,"gap":339,"bestPace":314}],"added":1794223709058,"elev":[123.5,123.6,123.8,124.2,124.4,124.8,125.1,125.4,125.6,126,126.5,126.8,127.2,127.6,127.9,128,128,127.9,127.8,127.5,127.2,126.9,126.5,126.2,125.9,125.6,125.2,124.9,124.5,124,123.6,123.2,122.8,122.2,121.7,121.2,120.8,120.4,120.3,120.4,120.8,121.6,122.2,122.4,122.4,121.9,120.8,119.8,119.6,119.8,120.7,121.7,122.7,123.4,123.1,121.9,120.6,119.2,117.9,117.2,117,116.8,116.8,116.8,116.9,116.9,117.1,117.2,117.4,117.5,117.6,117.7,117.6,117.4,117.1,116.7,116.3,116,115.8,115.7,115.6,115.5,115.4,115.4,115.2,114.9,114.6,114.2,113.7,113.4,113.4,113.4,113.2,113,112.8,112.6,112.4,112.2,112.4,112.4,112.3,112.4,112.5,112.6,112.8,112.9,112.9,112.9,112.9,112.9,112.9,113.1,113.3,113.5,114,114.5,114.9,115.3,115.6,115.5,115.4,115.5,115.6,115.8,116,116.4,116.9,117.4,117.8,118.3,118.6,118.8,118.9,119,119,119.2,119.3,119.5,119.7,119.9,120.1,120.2,120.3,120.4,120.3,120.3,120.3,120.4,120.4,120.6,120.8,121,121.1,121.3,121.3,121.4,121.4,121.6,121.9,122.2,122.5,122.8,123.1,123.2,123.3,123.3,123.1,123.1,123,123,123,123.1,123.1,123.1,123.1,123.2,123.3,123.6,123.6,122.5,122.1,122.3,122.5,122.9,124.5,125.3,126,127.1,128.1,128.7,129,128.9,128.5,128.3,128.6,129,129.4,129.6,129.8,129.7,129.5,129.3,129.2,129.1,128.7,128.3,127.8,127.2,126.6,126.5,126.4,126.4,126.4,126.4,126.3,126.2,126,125.8,125.5,125.2,124.9,124.7,124.7,124.7,124.7,124.8,124.9,124.9,125,125.1,125,125,125,124.9,124.9,124.9,125,125.1,125.3,125.3,125.4,125.4,125.5,125.4,125.8,125.9,126,126.3,126.6,126.7,127.2,127.7,128.1,128.6,129.2,129.5,129.9,130.3,130.6,130.8,131.2,131.4,131.5,131.7,131.9,132,132,132,132,132.1,132.3,132.6,132.9,133.1,133,132.7,132.1,131.5,130.9,130.5,130.1,130,130.2,130.5,130.8,131.3,131.6,131.8,131.9,132,132,132.1,132.1,132,131.8,131.7,131.5,131.2,131,130.8,130.7,130.6,130.5,130.6,130.6,130.5,130.7,130.8,130.9,130.9,130.9,130.8,130.6,130.1,129.9,129.5,129.1,128.8,128.6,128.2,128,127.8,127.6,127.3,127.2,127,126.8,126.8,126.8,126.9,126.9,127,126.9,126.8,126.6,126.7,126.9,127.9,129.3,130.3,130.5,130,128.7,127,125.6,124.8,124.6,124.5,124.6,124.5,124.6,124.8,125,125.2,125.4,125.6,125.7,125.7,125.8,125.7,125.4,125.3,125,124.6,124.4,124.2,124,123.9,123.8,123.8,123.8,123.8,123.8,123.6,123.6,123.7,124,123.9,123.9,123.6,123.3,123.1,123.3,123.5,123.6,123.6,123.3,123,122.9,122.8,122.9,123,123,122.9,123,122.9,123,123.1,123.3,123.3,123.3,123.2,123.2,123.1,123,123,123,123,123,122.8,122.9,122.9,122.8,122.7,122.7,122.4,122.2,122.2,122.4,122.6,123,123.2,123.3,123.3,123.4,123.6,123.6,123.7],"elevStep":0.1},{"id":"rmw96i0zeelmz","name":"Magenta Run 10k","date":"2026-05-31","location":"Magenta","kind":"gara","type":"dieci","distanceKm":10,"source":"csv","laps":[{"n":1,"time":284.8,"dist":1,"hr":146,"hrMax":161,"ascent":1,"descent":0,"power":378,"wkg":4.82,"powerMax":421,"wkgMax":5.36,"cadence":180,"cadenceMax":187,"gct":238,"stride":1.15,"vo":8.5,"vr":7.3,"cal":65,"gap":289,"bestPace":271},{"n":2,"time":283.5,"dist":1,"hr":163,"hrMax":166,"ascent":0,"descent":1,"power":380,"wkg":4.84,"powerMax":394,"wkgMax":5.02,"cadence":184,"cadenceMax":186,"gct":234,"stride":1.15,"vo":8.4,"vr":7.2,"cal":72,"gap":283,"bestPace":274},{"n":3,"time":292.7,"dist":1,"hr":165,"hrMax":167,"ascent":2,"descent":0,"power":371,"wkg":4.73,"powerMax":411,"wkgMax":5.24,"cadence":181,"cadenceMax":184,"gct":241,"stride":1.12,"vo":8.4,"vr":7.5,"cal":74,"gap":294,"bestPace":284},{"n":4,"time":294.2,"dist":1,"hr":165,"hrMax":167,"ascent":1,"descent":1,"power":368,"wkg":4.69,"powerMax":399,"wkgMax":5.08,"cadence":181,"cadenceMax":184,"gct":240,"stride":1.12,"vo":8.4,"vr":7.4,"cal":74,"gap":294,"bestPace":284},{"n":5,"time":291.8,"dist":1,"hr":167,"hrMax":169,"ascent":1,"descent":1,"power":368,"wkg":4.69,"powerMax":378,"wkgMax":4.82,"cadence":183,"cadenceMax":188,"gct":238,"stride":1.11,"vo":8.3,"vr":7.4,"cal":74,"gap":293,"bestPace":286},{"n":6,"time":298.8,"dist":1,"hr":168,"hrMax":171,"ascent":0,"descent":1,"power":359,"wkg":4.57,"powerMax":385,"wkgMax":4.9,"cadence":180,"cadenceMax":189,"gct":236,"stride":1.11,"vo":8.1,"vr":7.3,"cal":77,"gap":298,"bestPace":281},{"n":7,"time":292.5,"dist":1,"hr":170,"hrMax":172,"ascent":0,"descent":3,"power":366,"wkg":4.66,"powerMax":377,"wkgMax":4.8,"cadence":185,"cadenceMax":189,"gct":236,"stride":1.11,"vo":8.2,"vr":7.3,"cal":76,"gap":293,"bestPace":287},{"n":8,"time":298.3,"dist":1,"hr":172,"hrMax":173,"ascent":1,"descent":1,"power":362,"wkg":4.61,"powerMax":381,"wkgMax":4.85,"cadence":182,"cadenceMax":186,"gct":241,"stride":1.1,"vo":8.3,"vr":7.5,"cal":77,"gap":300,"bestPace":292},{"n":9,"time":307.3,"dist":1,"hr":171,"hrMax":174,"ascent":2,"descent":0,"power":354,"wkg":4.51,"powerMax":383,"wkgMax":4.88,"cadence":179,"cadenceMax":186,"gct":243,"stride":1.07,"vo":8.2,"vr":7.6,"cal":78,"gap":308,"bestPace":289},{"n":10,"time":281,"dist":0.99,"hr":175,"hrMax":180,"ascent":2,"descent":0,"power":381,"wkg":4.85,"powerMax":421,"wkgMax":5.36,"cadence":185,"cadenceMax":192,"gct":234,"stride":1.13,"vo":8.2,"vr":7.2,"cal":76,"gap":284,"bestPace":261}],"added":1794223759226,"elev":[132.7,132.9,132.9,133.1,133.2,133.3,133.3,133.3,133.3,133.3,133.2,133.1,133,132.8,132.6,132.5,132.3,132.2,132.4,132.6,132.8,133.1,133.2,133.3,133.5,133.7,133.9,134.2,134.6,134.6,134.8,135,135.2,135.1,135,134.8,134.5,134.3,134.3,134.5,134.7,134.8,135,135.1,135.2,135.2,135.1,135,134.7,134.4,134,133.7,133.4,133.2,133,133,133,133,133,132.9,132.7,132.4,132.1,131.8,131.4,131.2,131,130.7,130.6,130.3,130.2,130.2,130.4,130.4,130.6,130.8,131,130.8,130.6,130.3,130.1,129.8,129.9,130,130.1,130.4,130.7,131.1,131.6,132,132.4,132.8,133.1,133.3,133.6,133.7,133.8,134,134.1,134.1],"elevStep":0.1},{"id":"rmw96ix7f1wlh","name":"Monza Half Marathon","date":"2026-10-04","location":"Monza","kind":"gara","type":"mezza","distanceKm":21.0975,"source":"csv","laps":[{"n":1,"time":310.9,"dist":1,"hr":142,"hrMax":157,"ascent":8,"descent":0,"power":354,"wkg":4.64,"powerMax":389,"wkgMax":5.1,"cadence":178,"cadenceMax":186,"gct":249,"stride":1.07,"vo":8.4,"vr":7.9,"cal":68,"gap":309,"bestPace":284},{"n":2,"time":297.5,"dist":1,"hr":158,"hrMax":160,"ascent":1,"descent":1,"power":356,"wkg":4.67,"powerMax":370,"wkgMax":4.85,"cadence":181,"cadenceMax":186,"gct":241,"stride":1.11,"vo":8.4,"vr":7.5,"cal":71,"gap":297,"bestPace":284},{"n":3,"time":293.4,"dist":1,"hr":160,"hrMax":162,"ascent":0,"descent":5,"power":355,"wkg":4.65,"powerMax":366,"wkgMax":4.8,"cadence":181,"cadenceMax":184,"gct":240,"stride":1.13,"vo":8.4,"vr":7.5,"cal":71,"gap":295,"bestPace":285},{"n":4,"time":293,"dist":1,"hr":159,"hrMax":162,"ascent":2,"descent":7,"power":357,"wkg":4.68,"powerMax":393,"wkgMax":5.15,"cadence":180,"cadenceMax":186,"gct":241,"stride":1.13,"vo":8.5,"vr":7.5,"cal":70,"gap":297,"bestPace":282},{"n":5,"time":297.7,"dist":1,"hr":161,"hrMax":164,"ascent":0,"descent":8,"power":353,"wkg":4.63,"powerMax":367,"wkgMax":4.81,"cadence":181,"cadenceMax":184,"gct":240,"stride":1.13,"vo":8.4,"vr":7.5,"cal":72,"gap":297,"bestPace":284},{"n":6,"time":290.7,"dist":1,"hr":164,"hrMax":171,"ascent":8,"descent":4,"power":367,"wkg":4.81,"powerMax":434,"wkgMax":5.69,"cadence":183,"cadenceMax":188,"gct":239,"stride":1.11,"vo":8.2,"vr":7.5,"cal":72,"gap":293,"bestPace":273},{"n":7,"time":291.8,"dist":1,"hr":165,"hrMax":169,"ascent":7,"descent":13,"power":364,"wkg":4.77,"powerMax":476,"wkgMax":6.24,"cadence":182,"cadenceMax":188,"gct":238,"stride":1.13,"vo":8.4,"vr":7.4,"cal":72,"gap":291,"bestPace":275},{"n":8,"time":295.9,"dist":1,"hr":164,"hrMax":167,"ascent":4,"descent":3,"power":358,"wkg":4.69,"powerMax":380,"wkgMax":4.98,"cadence":183,"cadenceMax":187,"gct":240,"stride":1.1,"vo":8.2,"vr":7.5,"cal":72,"gap":297,"bestPace":286},{"n":9,"time":295.5,"dist":1,"hr":167,"hrMax":170,"ascent":9,"descent":0,"power":373,"wkg":4.89,"powerMax":417,"wkgMax":5.47,"cadence":184,"cadenceMax":188,"gct":238,"stride":1.1,"vo":8.2,"vr":7.4,"cal":74,"gap":289,"bestPace":290},{"n":10,"time":293,"dist":1,"hr":168,"hrMax":170,"ascent":2,"descent":1,"power":361,"wkg":4.73,"powerMax":387,"wkgMax":5.07,"cadence":185,"cadenceMax":188,"gct":237,"stride":1.1,"vo":8.1,"vr":7.4,"cal":73,"gap":293,"bestPace":278},{"n":11,"time":296.5,"dist":1,"hr":165,"hrMax":168,"ascent":0,"descent":5,"power":351,"wkg":4.6,"powerMax":386,"wkgMax":5.06,"cadence":183,"cadenceMax":189,"gct":243,"stride":1.11,"vo":8.1,"vr":7.3,"cal":73,"gap":297,"bestPace":273},{"n":12,"time":293.1,"dist":1,"hr":166,"hrMax":168,"ascent":2,"descent":8,"power":352,"wkg":4.61,"powerMax":375,"wkgMax":4.91,"cadence":185,"cadenceMax":188,"gct":236,"stride":1.1,"vo":8.1,"vr":7.3,"cal":72,"gap":296,"bestPace":263},{"n":13,"time":297.6,"dist":1,"hr":165,"hrMax":168,"ascent":2,"descent":3,"power":350,"wkg":4.59,"powerMax":380,"wkgMax":4.98,"cadence":185,"cadenceMax":188,"gct":238,"stride":1.08,"vo":8,"vr":7.4,"cal":73,"gap":299,"bestPace":290},{"n":14,"time":292.7,"dist":1,"hr":166,"hrMax":169,"ascent":2,"descent":3,"power":357,"wkg":4.68,"powerMax":388,"wkgMax":5.09,"cadence":185,"cadenceMax":188,"gct":236,"stride":1.1,"vo":8.1,"vr":7.3,"cal":72,"gap":294,"bestPace":281},{"n":15,"time":301.4,"dist":1,"hr":167,"hrMax":169,"ascent":1,"descent":1,"power":347,"wkg":4.55,"powerMax":372,"wkgMax":4.88,"cadence":184,"cadenceMax":189,"gct":240,"stride":1.07,"vo":8,"vr":7.5,"cal":73,"gap":303,"bestPace":286},{"n":16,"time":303.3,"dist":1,"hr":166,"hrMax":170,"ascent":0,"descent":1,"power":349,"wkg":4.57,"powerMax":383,"wkgMax":5.02,"cadence":185,"cadenceMax":190,"gct":239,"stride":1.07,"vo":8,"vr":7.5,"cal":74,"gap":303,"bestPace":284},{"n":17,"time":300.5,"dist":1,"hr":169,"hrMax":171,"ascent":8,"descent":0,"power":366,"wkg":4.8,"powerMax":452,"wkgMax":5.92,"cadence":186,"cadenceMax":190,"gct":237,"stride":1.08,"vo":8,"vr":7.4,"cal":75,"gap":293,"bestPace":284},{"n":18,"time":290.2,"dist":1,"hr":164,"hrMax":171,"ascent":10,"descent":6,"power":367,"wkg":4.81,"powerMax":489,"wkgMax":6.41,"cadence":187,"cadenceMax":222,"gct":234,"stride":1.1,"vo":8,"vr":7.3,"cal":71,"gap":289,"bestPace":272},{"n":19,"time":308,"dist":1,"hr":168,"hrMax":171,"ascent":10,"descent":0,"power":363,"wkg":4.76,"powerMax":491,"wkgMax":6.44,"cadence":185,"cadenceMax":190,"gct":240,"stride":1.06,"vo":8,"vr":7.6,"cal":76,"gap":298,"bestPace":282},{"n":20,"time":288.8,"dist":1,"hr":168,"hrMax":172,"ascent":0,"descent":8,"power":357,"wkg":4.68,"powerMax":377,"wkgMax":4.94,"cadence":186,"cadenceMax":190,"gct":234,"stride":1.11,"vo":8.1,"vr":7.3,"cal":71,"gap":294,"bestPace":275},{"n":21,"time":298.4,"dist":1,"hr":170,"hrMax":174,"ascent":6,"descent":0,"power":361,"wkg":4.73,"powerMax":420,"wkgMax":5.5,"cadence":186,"cadenceMax":190,"gct":237,"stride":1.07,"vo":7.9,"vr":7.4,"cal":74,"gap":295,"bestPace":287},{"n":22,"time":66.7,"dist":0.24,"hr":173,"hrMax":174,"ascent":2,"descent":0,"power":384,"wkg":5.03,"powerMax":411,"wkgMax":5.39,"cadence":190,"cadenceMax":192,"gct":229,"stride":1.12,"vo":7.9,"vr":7.1,"cal":17,"gap":278,"bestPace":271}],"added":1794223800987,"elev":[183.3,183.7,184.3,185.3,186.2,187,187.9,188.6,189.3,189.9,190.3,190.6,190.8,191,191.2,191.5,191.6,191.5,191.2,190.8,190.2,189.4,188.7,187.9,187.2,186.5,186,185.5,185.1,184.6,183.6,182.5,181.6,181.1,181,181.3,181.6,181.6,181.1,180.4,179.5,178.7,177.7,176.8,175.9,175,174.3,173.6,173.1,173,173.3,173.9,174.8,175.4,176.1,176.4,176.4,176,175.7,175.1,173.5,171.4,170.6,170.1,169.7,170.1,171.1,170.8,170.1,169.5,168.8,168.2,167.4,166.9,166.8,166.9,167.3,168,168.8,169.6,170.2,170.9,171.7,172.7,173.8,175,176.2,177.3,178.2,178.8,179.6,180.1,180.6,180.9,181.2,181.1,181.2,181.1,180.9,180.7,180.2,179.6,179,178.4,177.7,177.3,176.9,176.4,175.7,174.9,173.2,171.6,170.1,168.8,167.7,167.3,167.3,167.4,167.8,168.2,168.6,168.6,168.3,167.7,166.9,166.3,166,166,166.5,167.2,168.1,168.8,169.2,169.1,168.8,168.2,167.6,167.1,166.9,166.6,166.5,166.5,166.7,166.8,167.2,167.4,167.6,167.5,167.5,167.3,167,166.8,166.7,166.5,166.4,166.1,165.9,165.8,165.6,165.6,165.6,166.3,167.1,168.1,169.3,170.7,171.6,172.2,172.9,173.4,174,174.3,174.6,175.1,175.7,176.3,176.9,176.2,176.2,177,177.7,178.8,181.2,182.6,183.2,183.9,184.4,184.7,184.7,184.6,184.3,183.8,183.3,183,182.2,181,179.8,178.9,178,177.4,177.3,177.6,177.8,178.2,179.2,180.3,181.3,182.4,183.2,183.8,184.4,184.6,184.9],"elevStep":0.1},{"id":"rmw96jmjr2ji0","name":"Maratona di New York","date":"2026-11-01","location":"New York","kind":"gara","type":"maratona","distanceKm":42.195,"source":"csv","laps":[{"n":1,"time":426.2,"dist":1,"hr":144,"hrMax":152,"ascent":38,"descent":0,"power":311,"wkg":4.08,"powerMax":341,"wkgMax":4.47,"cadence":170,"cadenceMax":178,"gct":280,"stride":0.82,"vo":7.9,"vr":9.6,"cal":88,"gap":389,"bestPace":391,"excl":true},{"n":2,"time":366.9,"dist":1,"hr":146,"hrMax":153,"ascent":8,"descent":10,"power":298,"wkg":3.91,"powerMax":339,"wkgMax":4.44,"cadence":173,"cadenceMax":177,"gct":266,"stride":0.95,"vo":8.3,"vr":8.7,"cal":79,"gap":365,"bestPace":317},{"n":3,"time":338.7,"dist":1,"hr":137,"hrMax":141,"ascent":0,"descent":40,"power":278,"wkg":3.64,"powerMax":288,"wkgMax":3.77,"cadence":174,"cadenceMax":179,"gct":259,"stride":1.02,"vo":8.5,"vr":8.3,"cal":69,"gap":359,"bestPace":329},{"n":4,"time":354.2,"dist":1,"hr":146,"hrMax":157,"ascent":9,"descent":14,"power":305,"wkg":4,"powerMax":369,"wkgMax":4.84,"cadence":174,"cadenceMax":179,"gct":263,"stride":0.97,"vo":8.3,"vr":8.6,"cal":75,"gap":357,"bestPace":328},{"n":5,"time":347.6,"dist":1,"hr":150,"hrMax":156,"ascent":2,"descent":2,"power":308,"wkg":4.04,"powerMax":339,"wkgMax":4.44,"cadence":174,"cadenceMax":177,"gct":261,"stride":0.99,"vo":8.4,"vr":8.4,"cal":77,"gap":347,"bestPace":335},{"n":6,"time":357.1,"dist":1,"hr":149,"hrMax":152,"ascent":4,"descent":2,"power":305,"wkg":4,"powerMax":331,"wkgMax":4.34,"cadence":174,"cadenceMax":178,"gct":264,"stride":0.97,"vo":8.3,"vr":8.6,"cal":78,"gap":355,"bestPace":339},{"n":7,"time":355.1,"dist":1,"hr":150,"hrMax":155,"ascent":5,"descent":2,"power":306,"wkg":4.01,"powerMax":366,"wkgMax":4.8,"cadence":174,"cadenceMax":177,"gct":263,"stride":0.97,"vo":8.3,"vr":8.6,"cal":77,"gap":354,"bestPace":345},{"n":8,"time":350,"dist":1,"hr":149,"hrMax":154,"ascent":1,"descent":4,"power":300,"wkg":3.93,"powerMax":320,"wkgMax":4.19,"cadence":174,"cadenceMax":176,"gct":262,"stride":0.98,"vo":8.3,"vr":8.5,"cal":75,"gap":352,"bestPace":346},{"n":9,"time":345.4,"dist":1,"hr":147,"hrMax":152,"ascent":0,"descent":14,"power":296,"wkg":3.88,"powerMax":309,"wkgMax":4.05,"cadence":173,"cadenceMax":177,"gct":261,"stride":1,"vo":8.5,"vr":8.4,"cal":72,"gap":353,"bestPace":337},{"n":10,"time":351.5,"dist":1,"hr":154,"hrMax":161,"ascent":8,"descent":0,"power":317,"wkg":4.15,"powerMax":357,"wkgMax":4.68,"cadence":173,"cadenceMax":176,"gct":263,"stride":0.98,"vo":8.4,"vr":8.6,"cal":79,"gap":347,"bestPace":338},{"n":11,"time":348.5,"dist":1,"hr":153,"hrMax":161,"ascent":2,"descent":7,"power":302,"wkg":3.96,"powerMax":340,"wkgMax":4.46,"cadence":173,"cadenceMax":177,"gct":262,"stride":0.99,"vo":8.4,"vr":8.5,"cal":75,"gap":351,"bestPace":332},{"n":12,"time":356,"dist":1,"hr":149,"hrMax":156,"ascent":1,"descent":2,"power":298,"wkg":3.91,"powerMax":326,"wkgMax":4.27,"cadence":174,"cadenceMax":178,"gct":263,"stride":0.96,"vo":8.3,"vr":8.6,"cal":75,"gap":358,"bestPace":341},{"n":13,"time":357.2,"dist":1,"hr":154,"hrMax":162,"ascent":8,"descent":2,"power":311,"wkg":4.08,"powerMax":356,"wkgMax":4.67,"cadence":174,"cadenceMax":178,"gct":263,"stride":0.97,"vo":8.3,"vr":8.6,"cal":79,"gap":352,"bestPace":314},{"n":14,"time":359.9,"dist":1,"hr":159,"hrMax":165,"ascent":18,"descent":3,"power":322,"wkg":4.22,"powerMax":350,"wkgMax":4.59,"cadence":173,"cadenceMax":179,"gct":265,"stride":0.95,"vo":8.2,"vr":8.6,"cal":82,"gap":350,"bestPace":339},{"n":15,"time":353.6,"dist":1,"hr":154,"hrMax":160,"ascent":1,"descent":11,"power":297,"wkg":3.89,"powerMax":322,"wkgMax":4.22,"cadence":172,"cadenceMax":176,"gct":264,"stride":0.99,"vo":8.5,"vr":8.5,"cal":77,"gap":357,"bestPace":331},{"n":16,"time":351.4,"dist":1,"hr":150,"hrMax":156,"ascent":0,"descent":10,"power":292,"wkg":3.83,"powerMax":323,"wkgMax":4.23,"cadence":174,"cadenceMax":178,"gct":263,"stride":0.97,"vo":8.3,"vr":8.5,"cal":71,"gap":361,"bestPace":339},{"n":17,"time":355.7,"dist":1,"hr":156,"hrMax":161,"ascent":12,"descent":1,"power":321,"wkg":4.21,"powerMax":353,"wkgMax":4.63,"cadence":174,"cadenceMax":181,"gct":263,"stride":0.97,"vo":8.3,"vr":8.6,"cal":78,"gap":346,"bestPace":334},{"n":18,"time":356.5,"dist":1,"hr":156,"hrMax":160,"ascent":4,"descent":3,"power":301,"wkg":3.94,"powerMax":374,"wkgMax":4.9,"cadence":175,"cadenceMax":179,"gct":262,"stride":0.95,"vo":8.2,"vr":8.6,"cal":77,"gap":359,"bestPace":311},{"n":19,"time":333.6,"dist":1,"hr":158,"hrMax":162,"ascent":2,"descent":12,"power":307,"wkg":4.02,"powerMax":364,"wkgMax":4.77,"cadence":174,"cadenceMax":183,"gct":255,"stride":1.02,"vo":8.3,"vr":8.1,"cal":75,"gap":338,"bestPace":291},{"n":20,"time":360.2,"dist":1,"hr":160,"hrMax":163,"ascent":6,"descent":1,"power":306,"wkg":4.01,"powerMax":361,"wkgMax":4.73,"cadence":175,"cadenceMax":179,"gct":262,"stride":0.95,"vo":8.1,"vr":8.6,"cal":79,"gap":355,"bestPace":339},{"n":21,"time":352.7,"dist":1,"hr":157,"hrMax":164,"ascent":2,"descent":8,"power":296,"wkg":3.88,"powerMax":348,"wkgMax":4.56,"cadence":175,"cadenceMax":179,"gct":261,"stride":0.96,"vo":8.2,"vr":8.5,"cal":75,"gap":358,"bestPace":315},{"n":22,"time":354.3,"dist":1,"hr":162,"hrMax":168,"ascent":11,"descent":10,"power":310,"wkg":4.06,"powerMax":384,"wkgMax":5.03,"cadence":176,"cadenceMax":180,"gct":260,"stride":0.95,"vo":8.1,"vr":8.5,"cal":79,"gap":352,"bestPace":325},{"n":23,"time":343,"dist":1,"hr":163,"hrMax":168,"ascent":3,"descent":3,"power":311,"wkg":4.08,"powerMax":340,"wkgMax":4.46,"cadence":176,"cadenceMax":180,"gct":257,"stride":0.98,"vo":8.2,"vr":8.3,"cal":78,"gap":344,"bestPace":332},{"n":24,"time":361.6,"dist":1,"hr":165,"hrMax":168,"ascent":9,"descent":0,"power":307,"wkg":4.02,"powerMax":396,"wkgMax":5.19,"cadence":175,"cadenceMax":180,"gct":264,"stride":0.93,"vo":8,"vr":8.7,"cal":81,"gap":361,"bestPace":280},{"n":25,"time":384.7,"dist":1,"hr":168,"hrMax":172,"ascent":29,"descent":0,"power":319,"wkg":4.18,"powerMax":376,"wkgMax":4.93,"cadence":175,"cadenceMax":179,"gct":269,"stride":0.85,"vo":7.7,"vr":9.1,"cal":86,"gap":365,"bestPace":348},{"n":26,"time":342.5,"dist":1,"hr":164,"hrMax":171,"ascent":1,"descent":25,"power":284,"wkg":3.72,"powerMax":328,"wkgMax":4.3,"cadence":177,"cadenceMax":180,"gct":257,"stride":0.96,"vo":8.1,"vr":8.4,"cal":76,"gap":365,"bestPace":286},{"n":27,"time":354.4,"dist":1,"hr":164,"hrMax":169,"ascent":5,"descent":7,"power":301,"wkg":3.94,"powerMax":331,"wkgMax":4.34,"cadence":177,"cadenceMax":181,"gct":258,"stride":0.96,"vo":8.1,"vr":8.4,"cal":81,"gap":354,"bestPace":333},{"n":28,"time":352.6,"dist":1,"hr":164,"hrMax":167,"ascent":6,"descent":7,"power":300,"wkg":3.93,"powerMax":364,"wkgMax":4.77,"cadence":177,"cadenceMax":179,"gct":259,"stride":0.94,"vo":8,"vr":8.5,"cal":78,"gap":357,"bestPace":324},{"n":29,"time":346.2,"dist":1,"hr":165,"hrMax":170,"ascent":4,"descent":15,"power":297,"wkg":3.89,"powerMax":371,"wkgMax":4.86,"cadence":177,"cadenceMax":181,"gct":257,"stride":0.97,"vo":8.1,"vr":8.3,"cal":79,"gap":354,"bestPace":317},{"n":30,"time":359.8,"dist":1,"hr":166,"hrMax":168,"ascent":0,"descent":1,"power":293,"wkg":3.84,"powerMax":310,"wkgMax":4.06,"cadence":177,"cadenceMax":181,"gct":259,"stride":0.94,"vo":8,"vr":8.5,"cal":80,"gap":361,"bestPace":345},{"n":31,"time":358.5,"dist":1,"hr":167,"hrMax":169,"ascent":0,"descent":2,"power":294,"wkg":3.85,"powerMax":307,"wkgMax":4.02,"cadence":178,"cadenceMax":180,"gct":259,"stride":0.94,"vo":8,"vr":8.4,"cal":80,"gap":359,"bestPace":348},{"n":32,"time":369.8,"dist":1,"hr":168,"hrMax":172,"ascent":9,"descent":0,"power":302,"wkg":3.96,"powerMax":382,"wkgMax":5.01,"cadence":177,"cadenceMax":180,"gct":262,"stride":0.91,"vo":7.9,"vr":8.6,"cal":82,"gap":364,"bestPace":357},{"n":33,"time":368.9,"dist":1,"hr":167,"hrMax":179,"ascent":6,"descent":11,"power":287,"wkg":3.76,"powerMax":332,"wkgMax":4.35,"cadence":177,"cadenceMax":181,"gct":262,"stride":0.92,"vo":7.9,"vr":8.6,"cal":81,"gap":371,"bestPace":354},{"n":34,"time":349.8,"dist":1,"hr":168,"hrMax":172,"ascent":6,"descent":6,"power":307,"wkg":4.02,"powerMax":400,"wkgMax":5.24,"cadence":179,"cadenceMax":181,"gct":257,"stride":0.94,"vo":7.9,"vr":8.4,"cal":79,"gap":354,"bestPace":284},{"n":35,"time":358.7,"dist":1,"hr":169,"hrMax":173,"ascent":2,"descent":5,"power":298,"wkg":3.91,"powerMax":324,"wkgMax":4.25,"cadence":178,"cadenceMax":182,"gct":259,"stride":0.93,"vo":7.9,"vr":8.5,"cal":82,"gap":362,"bestPace":339},{"n":36,"time":355.3,"dist":1,"hr":170,"hrMax":172,"ascent":2,"descent":0,"power":306,"wkg":4.01,"powerMax":337,"wkgMax":4.42,"cadence":180,"cadenceMax":183,"gct":256,"stride":0.94,"vo":7.8,"vr":8.3,"cal":83,"gap":352,"bestPace":332},{"n":37,"time":351.1,"dist":1,"hr":169,"hrMax":171,"ascent":0,"descent":2,"power":303,"wkg":3.97,"powerMax":328,"wkgMax":4.3,"cadence":180,"cadenceMax":184,"gct":255,"stride":0.95,"vo":7.8,"vr":8.3,"cal":80,"gap":352,"bestPace":325},{"n":38,"time":371.5,"dist":1,"hr":172,"hrMax":180,"ascent":19,"descent":0,"power":322,"wkg":4.22,"powerMax":352,"wkgMax":4.61,"cadence":178,"cadenceMax":184,"gct":260,"stride":0.9,"vo":7.7,"vr":8.6,"cal":86,"gap":356,"bestPace":323},{"n":39,"time":375,"dist":1,"hr":171,"hrMax":179,"ascent":10,"descent":2,"power":301,"wkg":3.94,"powerMax":350,"wkgMax":4.59,"cadence":178,"cadenceMax":182,"gct":261,"stride":0.89,"vo":7.7,"vr":8.6,"cal":86,"gap":368,"bestPace":350},{"n":40,"time":381.9,"dist":1,"hr":163,"hrMax":170,"ascent":4,"descent":18,"power":273,"wkg":3.58,"powerMax":340,"wkgMax":4.46,"cadence":173,"cadenceMax":181,"gct":260,"stride":0.9,"vo":7.7,"vr":8.5,"cal":78,"gap":389,"bestPace":348},{"n":41,"time":390.6,"dist":1,"hr":164,"hrMax":169,"ascent":9,"descent":11,"power":277,"wkg":3.63,"powerMax":348,"wkgMax":4.56,"cadence":172,"cadenceMax":181,"gct":263,"stride":0.87,"vo":7.6,"vr":8.7,"cal":78,"gap":391,"bestPace":361},{"n":42,"time":383,"dist":1,"hr":166,"hrMax":173,"ascent":9,"descent":0,"power":297,"wkg":3.89,"powerMax":327,"wkgMax":4.29,"cadence":177,"cadenceMax":181,"gct":264,"stride":0.89,"vo":7.8,"vr":8.8,"cal":81,"gap":374,"bestPace":332},{"n":43,"time":251.6,"dist":0.69,"hr":169,"hrMax":179,"ascent":5,"descent":2,"power":286,"wkg":3.75,"powerMax":367,"wkgMax":4.81,"cadence":173,"cadenceMax":182,"gct":260,"stride":0.92,"vo":7.8,"vr":8.5,"cal":55,"gap":366,"bestPace":322}],"added":1794223833831,"elev":[39,41.1,43.1,47.2,51.5,55.6,59.9,64,67.7,71.2,74.3,76.8,79,80.7,81.6,81.8,81,79.4,77,74.2,70.7,67,63.1,59.2,55,50.8,46.7,42.6,38.5,34.5,30.4,26.3,22.7,20.4,19.2,19,20.3,22.3,23.7,24.7,25.6,25.8,25.4,24.8,24.7,24.7,24.9,25.3,25.7,25.8,26,25.9,25.8,26,26.6,27.3,28,28.6,29,29,28.5,28,27.7,27.9,28.5,29.6,30.6,31.5,31.8,31.5,30.8,30.1,29.3,28.7,28.4,28.4,28.5,28.7,28.4,27.6,26.2,24.3,22.3,20.2,18.2,16.4,14.9,13.9,13.4,13.4,13.6,13.8,14.2,15,15.9,16.8,18.1,19.3,20.3,21.4,22.5,23.3,23.8,24,23.8,23.3,22.5,21.4,20.1,18.5,17.2,16.3,15.7,15.2,15,15,15,15.3,15.8,16.5,17,17.3,17.8,18.6,19.6,20.8,21.9,22.5,22.8,23.2,23.8,25.1,27.2,29.5,31.9,34.4,36.6,38,38.5,38,36.6,34.6,32.9,32,31.6,31.3,31.2,30.7,29.6,28.4,27.5,26.8,26.1,25.4,24.8,23.8,22.4,21.1,19.8,18.3,17.3,16.8,16.7,17.5,19.1,21,22.8,24.7,26.3,27.1,27.4,27.2,27,26.8,26.8,27.4,28.4,29,29.2,28.7,27.5,25.7,24.1,23.2,22.8,22.4,22.2,21.6,20.5,19.4,18.8,18.2,18.1,18.4,18.8,19.7,20.5,21.3,22.3,23.5,23.9,23.7,22.8,21.5,19.9,18.6,17.9,17.8,17.8,18.6,20.3,22.6,25.1,27.4,28.8,28.6,26.7,24.5,22.2,20.2,18.7,17.9,17.3,16.8,16.2,16,16.2,16.8,17.4,18.2,18.7,19,19.1,19,19,19.4,20.1,21.4,23.3,25.8,28.7,32,35.3,38.5,41.6,44.7,47.8,50.9,53.4,55.4,56.9,57.6,57.5,56.7,55.2,52.9,49.9,46.1,41.8,37.6,34,30.8,28.6,27.4,26.8,26.6,27.1,27.9,28.7,28.9,28.6,27.4,26.1,25,24.5,24.6,25.7,26.7,27.7,29.1,30.5,30.7,30.4,29.7,28.1,25.9,23.8,21.9,20.3,18.8,17.6,16.9,16.8,16.7,16.8,16.8,16.8,16.7,16.4,16.2,16,15.8,15.6,15.5,15.4,15.3,15.1,14.9,14.8,14.4,14.2,14.1,14.2,14.2,15.4,17,18.4,19.8,21.6,22.8,23.2,23.2,22.9,21.5,19.5,18.2,17.5,17.2,17.5,17.7,17.5,16.9,16.1,15,14.4,13.9,14.4,15,16.3,17.5,17.8,17,16.1,15,14.1,14,14.4,14.9,15.3,15.6,15.7,15.8,15.8,16,16.4,16.9,17.4,17.8,18,17.9,17.6,17.3,16.9,16.5,16.2,16,15.8,15.6,15.5,15.5,15.8,16.7,18.2,20.2,22.4,24.7,26.9,29.1,31,32.9,35,37.2,39.4,41.3,42.9,43.7,44.1,43.8,43.3,43.2,42.9,42.1,41.6,41.6,41,39.7,38.1,35.7,32.8,30.7,30.2,31,31.9,32.7,33.3,33.4,32.7,31.9,30.6,29,27.2,25.8,25.2,25.6,26.5,28,29.9,31.9,33.4,34.4,34.4,33.9,33.1,32.7,32.9,33,33.1],"elevStep":0.1}],"selected":["rmw96jmjr2ji0","rmw96gy9u28j5","rmw96g9z8tlcj"],"charts":[{"param":"pace"},{"param":"projV"},{"param":"elevRel"}],"xMode":"km","smooth":true,"filter":"maratona","kindFilter":"gara","target":"","targetType":"dieci"}</script>
+<script>
+(function(){
+'use strict';
+
+/* ---------- costanti e stato ---------- */
+var KINDS={gara:'Gara',allenamento:'Allenamento',pista:'Pista'};
+var TYPES={maratona:{label:'Maratona',km:42.195},mezza:{label:'Mezza maratona',km:21.0975},dieci:{label:'10 km',km:10},altro:{label:'Altra distanza',km:null}};
+var KEY='analisi-gare-v1';
+var S={races:[],selected:[],charts:[{param:'pace'},{param:'projV'}],xMode:'lap',smooth:false,filter:'all',kindFilter:'all',target:'',targetType:'maratona',
+  view:'confronto',current:null,draft:null,draftMsg:'',slots:{},rev:0,rj:'',loadNote:''};
+var drawers=[];
+
+/* ---------- utilita ---------- */
+function $(s,el){return (el||document).querySelector(s)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function nf(v,d){if(v==null||!isFinite(v))return '–';return v.toLocaleString('it-IT',{minimumFractionDigits:d||0,maximumFractionDigits:d||0})}
+function pad(n){return (n<10?'0':'')+n}
+function fmtPace(s){if(s==null||!isFinite(s))return '–';s=Math.round(s);return Math.floor(s/60)+':'+pad(s%60)}
+function fmtTime(s){if(s==null||!isFinite(s))return '–';s=Math.round(s);return Math.floor(s/3600)+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)}
+function fmtLap(s){if(s==null||!isFinite(s))return '–';var m=Math.floor(s/60),r=s-m*60;if(m>=60)return fmtTime(s);return m+':'+(r<10?'0':'')+r.toFixed(1)}
+function fmtDelta(s){if(s==null||!isFinite(s))return '–';var a=Math.abs(Math.round(s));return (s<0?'−':'+')+Math.floor(a/60)+':'+pad(a%60)}
+function fmtDate(iso){if(!iso)return '';var p=iso.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:iso}
+function d0(v){return nf(v,0)} function d1(v){return nf(v,1)} function d2(v){return nf(v,2)}
+function sum(a,f){var t=0;for(var i=0;i<a.length;i++){var v=f(a[i]);if(v!=null)t+=v}return t}
+function uid(){return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function toast(msg){var t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(function(){t.hidden=true},2600)}
+function parseT(s){ // "7:06.2" -> sec ; "1:05:41" -> sec
+  if(s==null)return null;s=String(s).trim();if(s===''||s==='--')return null;
+  var p=s.split(':');var n=p.map(function(x){return parseFloat(x.replace(',','.'))});
+  if(n.some(isNaN))return null;
+  if(n.length===1)return n[0];if(n.length===2)return n[0]*60+n[1];if(n.length===3)return n[0]*3600+n[1]*60+n[2];return null}
+function parseTarget(s){ // h:mm:ss oppure h:mm
+  s=String(s||'').trim();if(!s)return null;var p=s.split(':');
+  if(p.length===2)return (parseFloat(p[0])*3600+parseFloat(p[1])*60)||null;return parseT(s)}
+function parseNum(s){
+  if(s==null)return null;s=String(s).trim();if(s===''||s==='--')return null;
+  if(s.indexOf('.')>-1&&s.indexOf(',')>-1)s=s.replace(/,/g,'');
+  else if(/^\d{1,3}(,\d{3})+$/.test(s))s=s.replace(/,/g,'');
+  else s=s.replace(',','.');
+  var v=parseFloat(s);return isNaN(v)?null:v}
+
+/* ---------- persistenza ---------- */
+function snapshot(){return {app:'analisi-gare',version:2,rev:S.rev,races:S.races,selected:S.selected,charts:S.charts,xMode:S.xMode,smooth:S.smooth,filter:S.filter,kindFilter:S.kindFilter,target:S.target,targetType:S.targetType}}
+function save(){
+  var rj=JSON.stringify(S.races);if(rj!==S.rj){S.rj=rj;S.rev=Date.now()}
+  try{localStorage.setItem(KEY,JSON.stringify(snapshot()))}catch(e){}}
+function readEmbed(){try{var d=JSON.parse($('#embed').textContent);return d&&Array.isArray(d.races)?d:null}catch(e){return null}}
+function applyState(d){
+  S.races=d.races;
+  S.selected=(d.selected||d.races.map(function(r){return r.id})).filter(function(id){return d.races.some(function(r){return r.id===id})}).slice(0,8);
+  if(d.charts&&d.charts.length)S.charts=d.charts;
+  S.xMode=d.xMode||'lap';S.smooth=!!d.smooth;S.filter=d.filter||'all';S.kindFilter=d.kindFilter||'all';S.target=d.target||'';S.targetType=d.targetType||'maratona';
+  S.rev=d.rev||0;S.rj=JSON.stringify(S.races)}
+function load(){
+  var d=null,emb=readEmbed();
+  try{d=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+  if(d&&Array.isArray(d.races)){
+    if(emb&&(emb.rev||0)>(d.rev||0)){ // il file della pagina è più recente dei dati del browser
+      try{localStorage.setItem(KEY+'-displaced',JSON.stringify({app:'analisi-gare',version:2,rev:d.rev||0,races:d.races}))}catch(e){}
+      applyState({races:emb.races,selected:emb.selected,charts:d.charts,xMode:d.xMode,smooth:d.smooth,filter:d.filter,kindFilter:d.kindFilter,target:d.target,targetType:d.targetType,rev:emb.rev});
+      S.loadNote='Dati aggiornati dal file della pagina, più recente di quelli salvati nel browser.'}
+    else applyState(d)}
+  else if(emb)applyState(emb);
+  else applyState({races:[]});
+  S.races.forEach(function(r){if(!r.kind)r.kind='gara'});
+  var h=(location.hash||'').replace('#','');if(h==='gare'||h==='scheda'||h==='confronto')S.view=h;
+  S.current=S.races.length?sortedRaces()[0].id:null;
+  save();
+}
+function matches(r){var k=r.kind||'gara';return (S.kindFilter==='all'||k===S.kindFilter)&&(S.filter==='all'||(k==='gara'&&r.type===S.filter))}
+function visible(){return sortedRaces().filter(matches)}
+function selectOnly(ids){S.selected=ids.slice(0,8);if(ids.length>8)toast('Selezionate le 8 più recenti: è il massimo per il confronto')}
+function sortedRaces(){return S.races.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.added||0)-(a.added||0)})}
+function raceById(id){for(var i=0;i<S.races.length;i++)if(S.races[i].id===id)return S.races[i];return null}
+function assignSlots(){
+  var used={},next={};
+  S.selected.forEach(function(id){if(S.slots[id]!=null)used[S.slots[id]]=id});
+  Object.keys(S.slots).forEach(function(id){if(S.selected.indexOf(id)<0)delete S.slots[id]});
+  S.selected.forEach(function(id){
+    if(S.slots[id]==null){for(var i=0;i<8;i++){if(!used[i]){S.slots[id]=i;used[i]=id;break}}}
+  });
+}
+function colorOf(id){return 'var(--s'+((S.slots[id]||0)+1)+')'}
+
+/* ---------- calcoli (come nelle schede Excel) ---------- */
+function calc(r){
+  var D=r.distanceKm,L=r.laps,tot=sum(L,function(l){return l.dist}),cT=0,cD=0;
+  return L.map(function(l){
+    cT+=l.time;cD+=l.dist;
+    var prog=cT/cD,virt=D/tot*cD,progV=cT/virt;
+    return {pace:l.time/l.dist,cumT:cT,cumD:cD,prog:prog,proj:prog*D,virt:virt,progV:progV,projV:progV*D};
+  });
+}
+function median(a){var b=a.slice().sort(function(x,y){return x-y}),n=b.length;return n%2?b[(n-1)/2]:(b[n/2-1]+b[n/2])/2}
+function anomalies(L){ // lap con passo lontano dalla mediana: oltre 4 sigma robusti e oltre il 10% dalla mediana
+  var ps=[];L.forEach(function(l){if(l.dist>=0.5)ps.push(l.time/l.dist)});
+  if(ps.length<5)return L.map(function(){return false});
+  var med=median(ps),mad=median(ps.map(function(x){return Math.abs(x-med)})),thr=Math.max(4*1.4826*mad,0.10*med);
+  return L.map(function(l){return l.dist>=0.5&&Math.abs(l.time/l.dist-med)>thr})}
+function regularity(r){ // dispersione del passo per lap, pesata sulla distanza, senza i lap esclusi
+  var L=r.laps.filter(function(l){return !l.excl}),D=sum(L,function(l){return l.dist}),T=sum(L,function(l){return l.time});
+  if(L.length<2||!D)return null;
+  var m=T/D,v=0,inn=0;
+  L.forEach(function(l){var x=l.time/l.dist;v+=l.dist*(x-m)*(x-m);if(Math.abs(x-m)/m<=0.05)inn+=l.dist});
+  var sd=Math.sqrt(v/D);return {m:m,sd:sd,cv:sd/m,pct:inn/D,kmIn:inn,kmTot:D,nExcl:r.laps.length-L.length}}
+function stats(r){
+  var L=r.laps,c=calc(r),T=sum(L,function(l){return l.time}),Dd=sum(L,function(l){return l.dist});
+  function w(k,by){var s=0,t=0;L.forEach(function(l){if(l[k]!=null){var x=by==='dist'?l.dist:l.time;s+=l[k]*x;t+=x}});return t?s/t:null}
+  function mx(k){var m=null;L.forEach(function(l){if(l[k]!=null&&(m==null||l[k]>m))m=l[k]});return m}
+  function sm(k){var any=false,t=0;L.forEach(function(l){if(l[k]!=null){any=true;t+=l[k]}});return any?t:null}
+  var half=r.distanceKm/2,h1=null;
+  var px=0,pt=0;
+  for(var i=0;i<c.length;i++){
+    if(c[i].virt>=half){h1=pt+(c[i].cumT-pt)*(half-px)/(c[i].virt-px);break}
+    px=c[i].virt;pt=c[i].cumT}
+  return {reg:regularity(r),T:T,Dd:Dd,pace:T/Dd,hr:w('hr'),hrMax:mx('hrMax'),power:w('power'),powerMax:mx('powerMax'),wkg:w('wkg'),cadence:w('cadence'),
+    gct:w('gct'),stride:w('stride'),vo:w('vo'),vr:w('vr'),ascent:sm('ascent'),descent:sm('descent'),cal:sm('cal'),
+    h1:h1,h2:h1==null?null:T-h1,delta:h1==null?null:(T-h1)-h1,laps:L.length,c:c};
+}
+
+var PARAMS={
+  pace:{label:'Passo per lap',unit:'min/km',fmt:fmtPace,time:true,get:function(l,c){return c.pace}},
+  prog:{label:'Passo medio progressivo',unit:'min/km',fmt:fmtPace,time:true,cum:true,get:function(l,c){return c.prog}},
+  projV:{label:'Tempo atteso a fine gara (distanza normalizzata)',unit:'h:mm:ss',fmt:fmtTime,time:true,cum:true,raceOnly:true,get:function(l,c){return c.projV}},
+  proj:{label:'Tempo atteso a fine gara (distanza GPS)',unit:'h:mm:ss',fmt:fmtTime,time:true,cum:true,raceOnly:true,get:function(l,c){return c.proj}},
+  cumT:{label:'Tempo cumulato',unit:'h:mm:ss',fmt:fmtTime,time:true,cum:true,get:function(l,c){return c.cumT}},
+  hr:{label:'Frequenza cardiaca media',unit:'bpm',fmt:d0,get:function(l){return l.hr}},
+  hrMax:{label:'Frequenza cardiaca massima',unit:'bpm',fmt:d0,get:function(l){return l.hrMax}},
+  power:{label:'Potenza media',unit:'W',fmt:d0,get:function(l){return l.power}},
+  wkg:{label:'Potenza media per kg',unit:'W/kg',fmt:d2,get:function(l){return l.wkg}},
+  cadence:{label:'Cadenza media',unit:'passi/min',fmt:d0,get:function(l){return l.cadence}},
+  gct:{label:'Tempo di contatto con il suolo',unit:'ms',fmt:d0,get:function(l){return l.gct}},
+  stride:{label:'Lunghezza del passo',unit:'m',fmt:d2,get:function(l){return l.stride}},
+  vo:{label:'Oscillazione verticale',unit:'cm',fmt:d1,get:function(l){return l.vo}},
+  vr:{label:'Rapporto verticale',unit:'%',fmt:d1,get:function(l){return l.vr}},
+  ascent:{label:'Ascesa per lap',unit:'m',fmt:d0,get:function(l){return l.ascent}},
+  descent:{label:'Discesa per lap',unit:'m',fmt:d0,get:function(l){return l.descent}},
+  elev:{label:'Profilo altimetrico (quota)',unit:'m',fmt:d0,cum:true,elev:'abs'},
+  elevRel:{label:'Profilo altimetrico (dislivello dalla partenza)',unit:'m',fmt:d0,cum:true,elev:'rel'}
+};
+
+/* ---------- import: CSV ---------- */
+function csvRows(text){
+  text=text.replace(/^﻿/,'');
+  var first=text.split(/\r?\n/,1)[0],delim=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?';':',';
+  var rows=[],row=[],cell='',q=false;
+  for(var i=0;i<text.length;i++){var ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===delim){row.push(cell);cell=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);cell='';if(row.length>1||row[0]!=='')rows.push(row);row=[]}
+    else cell+=ch}
+  if(cell!==''||row.length){row.push(cell);rows.push(row)}
+  return rows;
+}
+var COLMAP=[['lap',/^(laps?|giri)$/i],['cumTime',/cumulat/i],['movPace',/passo medio in movimento|moving pace/i],['movTime',/^tempo in movimento|^moving time/i],
+ ['gctBal',/bilanciamento|balance/i],['gct',/contatto con il suolo|ground contact/i],['gap',/^prp|^avg gap|^gap/i],['pace',/^passo medio|^avg pace/i],
+ ['bestPace',/passo migliore|best pace/i],['hrMax',/^fc max|^max hr/i],['hr',/^fc media|^avg hr/i],['ascent',/^ascesa|total ascent/i],['descent',/^discesa|total descent/i],
+ ['powerMax',/potenza max|max power/i],['power',/potenza media|avg power/i],['wkgMax',/w\/kg massimo|max w\/kg/i],['wkg',/w\/kg medio|avg w\/kg/i],
+ ['cadenceMax',/cadenza.*max|max run cadence|max cadence/i],['cadence',/cadenza di corsa media|avg run cadence|avg cadence|cadenza media/i],
+ ['stride',/lunghezza media passo|avg stride/i],['vo',/oscillazione verticale|vertical oscillation/i],['vr',/rapporto verticale|vertical ratio/i],
+ ['cal',/^calorie|^calories/i],['temp',/^temperatur|^avg temp/i],['time',/^(tempo|time)$/i],['dist',/^dist/i]];
+var TIMEKEYS={gap:1,bestPace:1};
+function parseCSV(text){
+  var rows=csvRows(text);if(rows.length<2)throw new Error('Il file CSV sembra vuoto.');
+  var idx={};rows[0].forEach(function(h,i){h=h.trim();for(var k=0;k<COLMAP.length;k++){var key=COLMAP[k][0];if(idx[key]==null&&COLMAP[k][1].test(h)){idx[key]=i;break}}});
+  if(idx.time==null||idx.dist==null)throw new Error('Non riconosco le colonne: mancano Tempo e Distanza. Usa il CSV dei giri esportato da Garmin Connect.');
+  var laps=[],n=0;
+  for(var i=1;i<rows.length;i++){
+    var r=rows[i],first=(r[idx.lap!=null?idx.lap:0]||'').trim();
+    if(!/^\d+$/.test(first))continue;
+    var time=parseT(r[idx.time]),dist=parseNum(r[idx.dist]);
+    if(!time||!dist)continue;
+    var l={n:++n,time:time,dist:dist};
+    ['hr','hrMax','ascent','descent','power','wkg','powerMax','wkgMax','cadence','cadenceMax','gct','gctBal','stride','vo','vr','cal','temp'].forEach(function(k){if(idx[k]!=null){var v=parseNum(r[idx[k]]);if(v!=null)l[k]=v}});
+    ['gap','bestPace'].forEach(function(k){if(idx[k]!=null){var v=parseT(r[idx[k]]);if(v!=null)l[k]=v}});
+    laps.push(l);
+  }
+  if(!laps.length)throw new Error('Non ho trovato nessun lap nel file.');
+  return {laps:laps,date:''};
+}
+/* ---------- import: TCX ---------- */
+function parseTCX(text){
+  var doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length)throw new Error('File TCX non valido.');
+  function kid(el,name){for(var c=el.firstElementChild;c;c=c.nextElementSibling)if(c.localName===name)return c;return null}
+  function txt(el,name){var k=kid(el,name);return k?parseFloat(k.textContent):null}
+  function hrv(el,name){var k=kid(el,name),v=k&&kid(k,'Value');return v?parseFloat(v.textContent):null}
+  var lapsEl=doc.getElementsByTagNameNS('*','Lap'),laps=[],gd=[],ga=[];
+  for(var i=0;i<lapsEl.length;i++){
+    var L=lapsEl[i],time=txt(L,'TotalTimeSeconds'),dist=txt(L,'DistanceMeters');
+    if(!time||!dist)continue;
+    var l={n:laps.length+1,time:time,dist:dist/1000},cal=txt(L,'Calories'),hr=hrv(L,'AverageHeartRateBpm'),hm=hrv(L,'MaximumHeartRateBpm');
+    if(cal!=null)l.cal=cal;if(hr!=null)l.hr=hr;if(hm!=null)l.hrMax=hm;
+    var tps=L.getElementsByTagNameNS('*','Trackpoint'),alts=[],w=[],cd=[];
+    for(var j=0;j<tps.length;j++){
+      var a=tps[j].getElementsByTagNameNS('*','AltitudeMeters')[0],ww=tps[j].getElementsByTagNameNS('*','Watts')[0],cc=tps[j].getElementsByTagNameNS('*','RunCadence')[0];
+      var dd=tps[j].getElementsByTagNameNS('*','DistanceMeters')[0];if(a&&dd){gd.push(parseFloat(dd.textContent));ga.push(parseFloat(a.textContent))}
+      if(a)alts.push(parseFloat(a.textContent));if(ww)w.push(parseFloat(ww.textContent));if(cc)cd.push(parseFloat(cc.textContent)*2)}
+    if(alts.length){var asc=0,des=0,ref=alts[0];alts.forEach(function(x){if(x-ref>1){asc+=x-ref;ref=x}else if(ref-x>1){des+=ref-x;ref=x}});l.ascent=Math.round(asc);l.descent=Math.round(des)}
+    if(w.length){l.power=w.reduce(function(a,b){return a+b},0)/w.length;l.powerMax=Math.max.apply(null,w)}
+    if(cd.length){var cm=cd.reduce(function(a,b){return a+b},0)/cd.length;l.cadence=cm;l.cadenceMax=Math.max.apply(null,cd);l.stride=l.dist*1000/(cm*time/60)}
+    laps.push(l);
+  }
+  if(!laps.length)throw new Error('Non ho trovato nessun lap nel file TCX.');
+  var id=doc.getElementsByTagNameNS('*','Id')[0],date='';
+  if(id){var d=new Date(id.textContent);if(!isNaN(d))date=d.toISOString().slice(0,10)}
+  return {laps:laps,date:date,elev:buildElev(gd,ga),elevStep:0.1};
+}
+function buildElev(gd,ga){
+  if(gd.length<10)return null;
+  var step=100,n=Math.floor(gd[gd.length-1]/step),out=[],j=0;
+  for(var k=0;k<=n;k++){var x=k*step;while(j<gd.length-2&&gd[j+1]<x)j++;var d0_=gd[j],d1=gd[j+1],t=d1>d0_?Math.min(1,Math.max(0,(x-d0_)/(d1-d0_))):0;out.push(ga[j]+(ga[j+1]-ga[j])*t)}
+  return out.map(function(v,i){var sm=0,c=0;for(var q=i-2;q<=i+2;q++){if(q>=0&&q<out.length){sm+=out[q];c++}}return Math.round(sm/c*10)/10})
+}
+function detectType(km){
+  if(km>=40&&km<=46)return 'maratona';if(km>=20&&km<=23.5)return 'mezza';if(km>=9.4&&km<=11.5)return 'dieci';return 'altro'}
+
+function readFile(file){
+  S.draftMsg='';S.draft=null;
+  var ext=(file.name.split('.').pop()||'').toLowerCase();
+  if(ext!=='csv'&&ext!=='tcx'){S.draftMsg='Formato non supportato: carica un file .csv o .tcx.';render();return}
+  var fr=new FileReader();
+  fr.onload=function(){
+    try{
+      var res=ext==='csv'?parseCSV(String(fr.result)):parseTCX(String(fr.result));
+      var tot=sum(res.laps,function(l){return l.dist}),t=detectType(tot);
+      S.draft={fileName:file.name,source:ext,laps:res.laps,elev:res.elev||null,name:'',date:res.date,location:'',type:t,kind:t==='altro'?'allenamento':'gara',km:t==='altro'?Math.round(tot*10)/10:TYPES[t].km};
+    }catch(e){S.draftMsg=e.message||'Impossibile leggere il file.'}
+    render();
+  };
+  fr.onerror=function(){S.draftMsg='Impossibile leggere il file.';render()};
+  fr.readAsText(file);
+}
+
+/* ---------- grafico SVG ---------- */
+function niceStep(range,target,time){
+  var raw=range/target;
+  if(time){var st=[1,2,5,10,15,20,30,60,120,180,300,600,900,1200,1800,3600,7200];for(var i=0;i<st.length;i++)if(st[i]>=raw)return st[i];return 7200}
+  var p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
+function ticks(lo,hi,target,time){var st=niceStep(hi-lo,target,time),out=[];for(var v=Math.ceil(lo/st-1e-9)*st;v<=hi+1e-9;v+=st)out.push(+v.toFixed(6));return out}
+
+var _cv=null;
+function textW(t){try{_cv=_cv||document.createElement('canvas').getContext('2d');_cv.font='600 12px Barlow,system-ui,sans-serif';return _cv.measureText(t).width}catch(e){return t.length*7}}
+function short(n){return n.length>26?n.slice(0,25)+'…':n}
+function drawChart(host,o){
+  var series=o.series.filter(function(s){return s.pts.some(function(p){return p.y!=null})});
+  if(!series.length){host.innerHTML='<div class="empty">Nessun dato disponibile per questo parametro nelle gare selezionate.</div>';return}
+  var W=Math.max(260,Math.floor(host.clientWidth)),H=W<520?250:310;
+  var lw=0;series.forEach(function(se){lw=Math.max(lw,textW(short(se.name)))});
+  var rm=Math.min(200,Math.ceil(lw)+18),direct=series.length<=4&&W-rm-54>=420;
+  var m={l:54,r:direct?rm:16,t:16,b:34},pw=W-m.l-m.r,ph=H-m.t-m.b;
+  var xs=[],ys=[];series.forEach(function(s){s.pts.forEach(function(p){xs.push(p.x);if(p.y!=null)ys.push(p.y)})});
+  if(o.ref)ys.push(o.ref.y);
+  var x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs);if(x1===x0)x1=x0+1;
+  var y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys),pd=(y1-y0)*.08||Math.abs(y0)*.05||1;y0-=pd;y1+=pd;
+  function X(v){return m.l+(v-x0)/(x1-x0)*pw}
+  function Y(v){return m.t+(1-(v-y0)/(y1-y0))*ph}
+  var s='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+esc(o.title||'Grafico')+'">';
+  ticks(y0,y1,5,o.time).forEach(function(v){var y=Y(v);s+='<line class="gl" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+y+'" y2="'+y+'"/><text class="ax" x="'+(m.l-8)+'" y="'+(y+4)+'" text-anchor="end">'+esc(o.fmt(v))+'</text>'});
+  s+='<line class="base" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+(H-m.b)+'" y2="'+(H-m.b)+'"/>';
+  ticks(x0,x1,W<520?5:9,false).forEach(function(v){var x=X(v);s+='<line class="base" x1="'+x+'" x2="'+x+'" y1="'+(H-m.b)+'" y2="'+(H-m.b+4)+'"/><text class="ax" x="'+x+'" y="'+(H-m.b+17)+'" text-anchor="middle">'+nf(v,v%1?1:0)+'</text>'});
+  s+='<text class="axt" x="'+(W-m.r)+'" y="'+(H-3)+'" text-anchor="end">'+(o.xMode==='km'?'Distanza (km)':o.xMode==='pct'?'% della distanza':'Lap')+'</text>';
+  if(o.ref){var ry=Y(o.ref.y);s+='<line class="refl" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+ry+'" y2="'+ry+'"/><text class="lab" x="'+(m.l+6)+'" y="'+(ry-6)+'">'+esc(o.ref.label)+'</text>'}
+  series.forEach(function(se){
+    if(o.area){var pp=se.pts.filter(function(p){return p.y!=null});if(pp.length>1){var ad='M'+X(pp[0].x).toFixed(1)+' '+(H-m.b);pp.forEach(function(p){ad+='L'+X(p.x).toFixed(1)+' '+Y(p.y).toFixed(1)});ad+='L'+X(pp[pp.length-1].x).toFixed(1)+' '+(H-m.b)+'Z';s+='<path d="'+ad+'" style="fill:'+se.color+';fill-opacity:.14;stroke:none"/>'}}
+    var d='',pen=false;se.pts.forEach(function(p){if(p.y==null){pen=false;return}d+=(pen?'L':'M')+X(p.x).toFixed(1)+' '+Y(p.y).toFixed(1);pen=true});
+    s+='<path class="ln" style="stroke:'+se.color+'" d="'+d+'"/>'});
+  if(direct){
+    var labs=series.map(function(se){var lp=null;se.pts.forEach(function(p){if(p.y!=null)lp=p});return {name:se.name,y:Y(lp.y),x:X(lp.x)}}).sort(function(a,b){return a.y-b.y});
+    for(var i=1;i<labs.length;i++)if(labs[i].y-labs[i-1].y<14)labs[i].y=labs[i-1].y+14;
+    labs.forEach(function(l){s+='<text class="lab" x="'+(W-m.r+8)+'" y="'+(l.y+4)+'">'+esc(short(l.name))+'</text>'})}
+  s+='<g id="hv"></g><rect id="ov" x="'+m.l+'" y="'+m.t+'" width="'+pw+'" height="'+ph+'" fill="transparent"/></svg><div class="tip" hidden></div>';
+  host.innerHTML=s;
+  var ov=$('#ov',host),hv=$('#hv',host),tip=$('.tip',host);
+  ov.removeAttribute('id');hv.removeAttribute('id');
+  function move(e){
+    var r=ov.getBoundingClientRect(),px=e.clientX-r.left+m.l,dx=x0+(px-m.l)/pw*(x1-x0),best=null,bd=1e9;
+    series.forEach(function(se){se.pts.forEach(function(p){if(p.y==null)return;var d=Math.abs(p.x-dx);if(d<bd){bd=d;best=p}})});
+    if(!best)return;
+    var tol=o.xMode==='km'?.75:o.xMode==='pct'?1.5:.5,rows=[];
+    series.forEach(function(se){var q=null,qd=1e9;se.pts.forEach(function(p){if(p.y==null)return;var d=Math.abs(p.x-best.x);if(d<qd){qd=d;q=p}});if(q&&qd<=tol)rows.push({se:se,p:q})});
+    var g='<line class="xh" x1="'+X(best.x)+'" x2="'+X(best.x)+'" y1="'+m.t+'" y2="'+(H-m.b)+'"/>';
+    rows.forEach(function(r){g+='<circle cx="'+X(r.p.x)+'" cy="'+Y(r.p.y)+'" r="4.5" style="fill:'+r.se.color+';stroke:var(--surface);stroke-width:2"/>'});
+    hv.innerHTML=g;
+    var head=o.xMode==='km'?'km '+nf(best.x,2):o.xMode==='pct'?nf(best.x,1)+' %':'Lap '+nf(best.x,0);
+    var h='<div class="th">'+head+'</div>';
+    rows.sort(function(a,b){return a.p.y-b.p.y}).forEach(function(r){h+='<div class="r"><span><i style="background:'+r.se.color+'"></i>'+esc(r.se.name)+'</span><b>'+esc(o.fmt(r.p.y))+'</b></div>'});
+    tip.innerHTML=h;tip.hidden=false;
+    var tw=tip.offsetWidth,tx=X(best.x)+14;if(tx+tw>W)tx=X(best.x)-tw-14;
+    tip.style.left=Math.max(0,tx)+'px';tip.style.top=(m.t+6)+'px';
+  }
+  function leave(){hv.innerHTML='';tip.hidden=true}
+  ov.addEventListener('pointermove',move);ov.addEventListener('pointerdown',move);ov.addEventListener('pointerleave',leave);
+}
+function legendHTML(series){
+  if(series.length<2)return '';
+  return '<div class="legend">'+series.map(function(s){return '<span><i style="background:'+s.color+'"></i>'+esc(s.name)+'</span>'}).join('')+'</div>'}
+
+function elevOf(r,rel){
+  var pts=[];
+  if(r.elev&&r.elev.length){var st=r.elevStep||0.1,b=rel?r.elev[0]:0;return {exact:true,pts:r.elev.map(function(v,i){return {x:i*st,y:v-b}})}}
+  if(!rel)return {exact:false,pts:[]};
+  var cum=0,d=0,any=false;pts.push({x:0,y:0});
+  r.laps.forEach(function(l){if(l.ascent!=null||l.descent!=null)any=true;d+=l.dist;cum+=(l.ascent||0)-(l.descent||0);pts.push({x:d,y:cum})});
+  return {exact:false,pts:any?pts:[]}}
+function elevCardHTML(r){
+  var e=r.elev&&r.elev.length,note;
+  if(e)note='Quota minima '+d0(Math.min.apply(null,r.elev))+' m · massima '+d0(Math.max.apply(null,r.elev))+' m · '+nf(r.elev.length*(r.elevStep||0.1),1)+' km registrati';
+  else note='Senza TCX la quota non è nota: il profilo è ricostruito dai dislivelli per lap, partendo da 0 m, ed è approssimato. Per il profilo preciso usa “Completa con un altro file” e scegli il TCX di questa attività.';
+  return '<section class="card" style="grid-column:1/-1"><h3 style="margin-bottom:8px">Profilo altimetrico'+(e?'':' (ricostruito)')+'</h3><div class="plot" id="pl2"></div><div class="note">'+note+'</div></section>'}
+function smoothPts(pts){return pts.map(function(p,i){
+  if(p.y==null)return p;var w=[pts[i-1],p,pts[i+1]].filter(function(q){return q&&q.y!=null});
+  return {x:p.x,y:w.reduce(function(a,q){return a+q.y},0)/w.length}})}
+function seriesFor(param,races,opt){
+  var P=PARAMS[param];
+  return races.map(function(r){
+    if(P.elev){var e=elevOf(r,P.elev==='rel'),tx=e.pts.length?e.pts[e.pts.length-1].x:1;
+      return {id:r.id,name:r.name,color:opt.color(r),pts:e.pts.map(function(p){return {x:opt.xMode==='pct'?p.x/tx*100:p.x,y:p.y}})}}
+    var c=calc(r),tot=c[c.length-1].cumD,skip=P.raceOnly&&(r.kind||'gara')!=='gara';
+    var pts=r.laps.map(function(l,i){var v=skip?null:P.get(l,c[i]);return {x:opt.xMode==='km'?c[i].cumD:opt.xMode==='pct'?c[i].cumD/tot*100:l.n,y:(v==null||!isFinite(v))?null:v}});
+    if(opt.smooth&&!P.cum)pts=smoothPts(pts);
+    return {id:r.id,name:r.name,color:opt.color(r),pts:pts}});
+}
+function refFor(param){
+  var t=parseTarget(S.target);if(!t)return null;var km=TYPES[S.targetType].km;
+  if(param==='pace'||param==='prog')return {y:t/km,label:'Obiettivo '+fmtPace(t/km)+' /km'};
+  if(param==='projV'||param==='proj')return {y:t,label:'Obiettivo '+fmtTime(t)};
+  return null}
+
+/* ---------- viste ---------- */
+function typeLabel(r){if((r.kind||'gara')!=='gara')return KINDS[r.kind]+' '+nf(r.distanceKm,2)+' km';return r.type==='altro'?nf(r.distanceKm,1)+' km':TYPES[r.type].label}
+
+function viewGare(){
+  var d=S.draft,h='<div class="grid2"><section class="card"><h2>Importa un\'attività</h2>';
+  h+='<label class="drop" id="drop"><b>Carica il file di Garmin</b>Trascina qui un .csv o un .tcx, oppure clicca per sceglierlo<input type="file" id="file" accept=".csv,.tcx,.xml"></label>';
+  h+='<p class="note">Il CSV dei giri contiene tutte le colonne delle tue schede Excel, compresi contatto al suolo e oscillazione verticale. Il TCX va bene ma non le include.</p>';
+  if(S.draftMsg)h+='<p class="err" role="alert">'+esc(S.draftMsg)+'</p>';
+  if(d){
+    var tot=sum(d.laps,function(l){return l.dist}),tt=sum(d.laps,function(l){return l.time});
+    h+='<hr style="border:0;border-top:1px solid var(--line);margin:16px 0">';
+    h+='<p style="margin:0 0 12px"><b>'+esc(d.fileName)+'</b><br><span class="note">'+d.laps.length+' lap · '+nf(tot,2)+' km · '+fmtTime(tt)+' · formato '+d.source.toUpperCase()+'</span></p>';
+    h+='<div class="form"><div class="full"><div class="note" style="margin-bottom:4px">TIPO DI ATTIVITÀ</div><div class="seg">'+Object.keys(KINDS).map(function(k){return '<button data-act="dkind" data-k="'+k+'" aria-pressed="'+(d.kind===k)+'">'+KINDS[k]+(k==='pista'?' (in pista)':'')+'</button>'}).join('')+'</div></div>';
+    h+='<label class="f full">Nome<input type="text" id="dName" maxlength="28" value="'+esc(d.name)+'" placeholder="'+(d.kind==='gara'?'es. Maratona di New York':d.kind==='pista'?'es. Ripetute 8x1000':'es. Lungo della domenica')+'" autocomplete="off"></label>';
+    h+='<label class="f">Data<input type="date" id="dDate" value="'+esc(d.date)+'"></label>';
+    h+='<label class="f">Località<input type="text" id="dLoc" value="'+esc(d.location)+'" placeholder="es. New York, USA" autocomplete="off"></label>';
+    if(d.kind==='gara')h+='<label class="f">Distanza ufficiale<select id="dType">'+Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(d.type===k?' selected':'')+'>'+TYPES[k].label+'</option>'}).join('')+'</select></label>';
+    h+=(d.kind==='gara'?'<label class="f" id="dKmWrap"'+(d.type==='altro'?'':' hidden')+'>Km<input type="number" id="dKm" step="0.001" min="0.1" value="'+esc(d.km)+'"></label>':'<p class="note full" style="margin:0">Distanza registrata: <b>'+nf(tot,2)+' km</b>. Allenamenti e sedute in pista non hanno una distanza ufficiale, quindi non c\'è il tempo atteso.</p>')+'</div>';
+    h+='<div class="row" style="margin-top:16px"><button class="btn" data-act="saveDraft">Salva e apri la scheda</button><button class="btn ghost" data-act="cancelDraft">Annulla</button></div>';
+  }
+  h+='</section><section class="card"><h2>Attività salvate ('+S.races.length+')</h2>';
+  if(!S.races.length)h+='<div class="empty">Nessuna attività. Carica un file per iniziare.</div>';
+  else{
+    h+='<div class="tblwrap"><table><thead><tr><th class="l">Gara</th><th>Data</th><th>Distanza</th><th>Tempo</th><th>Passo</th><th>FC media</th><th></th></tr></thead><tbody>';
+    sortedRaces().forEach(function(r){var st=stats(r);
+      h+='<tr><td class="l"><b>'+esc(r.name)+'</b><br><small>'+esc(r.location||'')+'</small></td><td>'+fmtDate(r.date)+'</td><td>'+esc(typeLabel(r))+'</td><td>'+fmtTime(st.T)+'</td><td>'+fmtPace(st.pace)+'</td><td>'+d0(st.hr)+'</td>';
+      h+='<td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end"><button class="btn ghost sm" data-act="open" data-id="'+r.id+'">Scheda</button><button class="btn ghost sm" data-act="del" data-id="'+r.id+'">Elimina</button></div></td></tr>'});
+    h+='</tbody></table></div>'}
+  return h+'</section></div>';
+}
+
+function viewScheda(){
+  var r=raceById(S.current);
+  if(!r)return '<div class="card empty">Nessuna attività da mostrare. Importa un file dalla sezione “Attività &amp; importa”.</div>';
+  var st=stats(r),c=st.c,L=r.laps,isRace=(r.kind||'gara')==='gara',an=anomalies(L),reg=st.reg,nAn=an.filter(Boolean).length;
+  var h='<div class="stack"><section class="card"><div class="row between" style="margin-bottom:12px"><h2 style="margin:0">'+esc(r.name)+'</h2>';
+  h+='<label class="f" style="min-width:200px">Cambia attività<select id="pickRace">'+sortedRaces().map(function(x){return '<option value="'+x.id+'"'+(x.id===r.id?' selected':'')+'>'+esc(x.name)+' · '+fmtDate(x.date)+'</option>'}).join('')+'</select></label></div>';
+  h+='<div class="form" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">';
+  h+='<label class="f">Nome<input type="text" id="eName" maxlength="28" value="'+esc(r.name)+'"></label>';
+  h+='<label class="f">Data<input type="date" id="eDate" value="'+esc(r.date||'')+'"></label>';
+  h+='<label class="f">Località<input type="text" id="eLoc" value="'+esc(r.location||'')+'"></label>';
+  h+='<label class="f">Tipo<select id="eKind">'+Object.keys(KINDS).map(function(k){return '<option value="'+k+'"'+((r.kind||'gara')===k?' selected':'')+'>'+KINDS[k]+'</option>'}).join('')+'</select></label>';
+  if(isRace)h+='<label class="f">Distanza ufficiale<select id="eType">'+Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(r.type===k?' selected':'')+'>'+TYPES[k].label+'</option>'}).join('')+'</select></label>';
+  if(isRace&&r.type==='altro')h+='<label class="f">Km<input type="number" id="eKm" step="0.001" min="0.1" value="'+esc(r.distanceKm)+'"></label>';
+  h+='</div>';
+  var hasDyn=L.some(function(l){return l.gct!=null});
+  h+='<div class="row" style="margin-top:12px"><label class="btn ghost sm" style="cursor:pointer">Completa con un altro file (CSV o TCX)<input type="file" id="mergeFile" accept=".csv,.tcx,.xml" hidden></label><span class="note" style="flex:1 1 280px">'+(r.elev?'Profilo altimetrico presente. ':'Profilo altimetrico non presente: serve il TCX. ')+(hasDyn?'':'Mancano contatto al suolo, oscillazione e rapporto verticale: arrivano dal CSV. ')+'Il file deve essere della stessa attività.</span></div>';
+  h+='</section>';
+  h+='<div class="kpis">'+
+   kpi('Tempo',fmtTime(st.T),nf(st.Dd,2)+' km registrati')+
+   kpi('Passo medio',fmtPace(st.pace),'min/km')+
+   kpi('FC media',d0(st.hr),'max '+d0(st.hrMax)+' bpm')+
+   kpi('Potenza media',d0(st.power),'W'+(st.wkg!=null?' · '+d2(st.wkg)+' W/kg':''))+
+   kpi('Dislivello',st.ascent==null?'–':'+'+d0(st.ascent),'discesa −'+d0(st.descent)+' m')+
+   kpi('1ª / 2ª metà',fmtTime(st.h1),'2ª metà '+fmtTime(st.h2)+' · '+fmtDelta(st.delta)+' tra le due')+
+   kpi('Regolarità del passo',reg?nf(reg.cv*100,1)+'<small>% CV</small>':'–',reg?nf(reg.pct*100,0)+'% dei km entro ±5% · dev. std '+nf(reg.sd,1)+' s/km':'')+'</div>';
+  // tabella
+  var imp=[['Lap',function(l,x,i){return l.n+(an[i]?' <span class="pill warn">anomalo</span>':'')}],['Escludi',function(l,x,i){return '<input type="checkbox" data-act="excl" data-i="'+i+'"'+(l.excl?' checked':'')+' aria-label="Escludi il lap '+l.n+' dal calcolo della regolarità">'}],['Tempo',function(l){return fmtLap(l.time)}],['Tempo cumulato',function(l,x){return fmtTime(x.cumT)}],['Distanza km',function(l){return nf(l.dist,2)}],
+    ['Passo medio min/km',function(l,x){return fmtPace(x.pace)}],['FC media',function(l){return d0(l.hr)}],['FC max',function(l){return d0(l.hrMax)}],['Ascesa m',function(l){return d0(l.ascent)}],['Discesa m',function(l){return d0(l.descent)}],
+    ['Potenza W',function(l){return d0(l.power)}],['W/kg',function(l){return d2(l.wkg)}],['Cadenza',function(l){return d0(l.cadence)}],['Contatto suolo ms',function(l){return d0(l.gct)}],
+    ['Lunghezza passo m',function(l){return d2(l.stride)}],['Oscill. verticale cm',function(l){return d1(l.vo)}],['Rapporto verticale %',function(l){return d1(l.vr)}],['Calorie',function(l){return d0(l.cal)}]];
+  var cal=[['Passo medio',function(l,x){return fmtPace(x.pace)}],['T. progressivo',function(l,x){return fmtTime(x.cumT)}],['P.M. progressivo',function(l,x){return fmtPace(x.prog)}],['Tempo atteso',function(l,x){return fmtTime(x.proj)}],
+    ['Distanza virtuale',function(l,x){return nf(x.virt,2)}],['P.M. virtuale',function(l,x){return fmtPace(x.progV)}],['Tempo atteso (virtuale)',function(l,x){return fmtTime(x.projV)}]];
+  h+='<section class="card"><div class="row between" style="margin-bottom:10px"><h2 style="margin:0">Tabella e calcoli</h2><span class="note">'+(isRace?'Distanza ufficiale '+nf(r.distanceKm,3)+' km · ':'')+'distanza registrata '+nf(st.Dd,2)+' km</span></div>';
+  h+='<div class="row" style="margin-bottom:10px"><span class="note" style="flex:1 1 300px">'+(nAn?'Passi anomali: '+an.map(function(f,i){return f?'lap '+L[i].n+' ('+fmtPace(c[i].pace)+' /km)':null}).filter(Boolean).join(', ')+'. Spunta “Escludi” per toglierli dal calcolo della regolarità; il tempo totale non cambia.':'Nessun passo anomalo. Con “Escludi” puoi togliere qualsiasi lap dal calcolo della regolarità.')+(reg&&reg.nExcl?' Lap esclusi: '+reg.nExcl+'.':'')+'</span>'+(nAn?'<button class="btn ghost sm" data-act="exclAnom">Escludi gli anomali</button>':'')+(reg&&reg.nExcl?'<button class="btn ghost sm" data-act="exclNone">Includi tutti</button>':'')+'</div>';
+  if(!isRace)cal=cal.slice(0,3);
+  h+='<div class="tblwrap tall"><table><thead><tr class="grp"><th colspan="'+imp.length+'">Dati Garmin</th><th colspan="'+cal.length+'" class="calc">Calcoli</th></tr><tr>';
+  imp.forEach(function(x,i){h+='<th'+(i===0?' class="l"':'')+'>'+x[0]+'</th>'});
+  cal.forEach(function(x,i){h+='<th'+(i===0?' class="calc-start"':'')+'>'+x[0]+'</th>'});
+  h+='</tr></thead><tbody>';
+  L.forEach(function(l,i){h+='<tr'+(l.excl?' class="ex"':'')+'>';imp.forEach(function(x){h+='<td>'+x[1](l,c[i],i)+'</td>'});cal.forEach(function(x,j){h+='<td'+(j===0?' class="calc-start"':'')+'>'+x[1](l,c[i])+'</td>'});h+='</tr>'});
+  var last=c[c.length-1];
+  h+='<tr class="sum"><td>Riepilogo</td><td></td><td>'+fmtTime(st.T)+'</td><td>'+fmtTime(st.T)+'</td><td>'+nf(st.Dd,2)+'</td><td>'+fmtPace(st.pace)+'</td><td>'+d0(st.hr)+'</td><td>'+d0(st.hrMax)+'</td><td>'+d0(st.ascent)+'</td><td>'+d0(st.descent)+'</td><td>'+d0(st.power)+'</td><td>'+d2(st.wkg)+'</td><td>'+d0(st.cadence)+'</td><td>'+d0(st.gct)+'</td><td>'+d2(st.stride)+'</td><td>'+d1(st.vo)+'</td><td>'+d1(st.vr)+'</td><td>'+d0(st.cal)+'</td>';
+  h+='<td class="calc-start">'+fmtPace(st.pace)+'</td><td>'+fmtTime(last.cumT)+'</td><td>'+fmtPace(last.prog)+'</td>'+(isRace?'<td>'+fmtTime(last.proj)+'</td><td>'+nf(last.virt,2)+'</td><td>'+fmtPace(last.progV)+'</td><td>'+fmtTime(last.projV)+'</td>':'')+'</tr>';
+  h+='</tbody></table></div></section>';
+  h+='<div class="grid-c" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:20px">';
+  h+='<section class="card"><h3 style="margin-bottom:8px">Passo per lap e passo medio progressivo</h3><div id="lg0"></div><div class="plot" id="pl0"></div></section>';
+  h+='<section class="card"><h3 style="margin-bottom:8px">'+(isRace?'Tempo atteso a fine gara':'Frequenza cardiaca per lap')+'</h3><div id="lg1"></div><div class="plot" id="pl1"></div></section>'+elevCardHTML(r)+'</div>';
+  return h+'</div>';
+}
+function kpi(k,v,s){return '<div class="kpi"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>'}
+
+function viewConfronto(){
+  assignSlots();
+  var sel=S.selected.map(raceById).filter(Boolean),list=visible();
+  var h='<div class="cmp"><aside class="rail"><section class="card"><div class="row between" style="margin-bottom:8px"><h2 style="margin:0">Attività</h2><span class="note">'+S.selected.length+' selezionate (max 8)</span></div>';
+  h+='<div class="seg" style="margin-bottom:8px">'+[['all','Tutte'],['gara','Gare'],['allenamento','Allenamenti'],['pista','Pista']].map(function(f){return '<button data-act="kfilter" data-f="'+f[0]+'" aria-pressed="'+(S.kindFilter===f[0])+'">'+f[1]+'</button>'}).join('')+'</div>';
+  h+='<div class="seg" style="margin-bottom:10px">'+[['all','Ogni dist.'],['maratona','Maratone'],['mezza','Mezze'],['dieci','10 km'],['altro','Altre']].map(function(f){return '<button data-act="filter" data-f="'+f[0]+'" aria-pressed="'+(S.filter===f[0])+'">'+f[1]+'</button>'}).join('')+'</div>';
+  h+='<div class="row" style="margin-bottom:6px"><button class="btn ghost sm" data-act="selAll">Seleziona tutte</button><button class="btn ghost sm" data-act="selNone">Deseleziona tutte</button><span class="note">'+list.length+' mostrate</span></div>';
+  if(!list.length)h+='<div class="empty" style="padding:16px 0">Nessuna attività di questo tipo.</div>';
+  list.forEach(function(r){var on=S.selected.indexOf(r.id)>-1,st=stats(r);
+    h+='<label class="rp"><input type="checkbox" data-act="pick" data-id="'+r.id+'"'+(on?' checked':'')+(!on&&S.selected.length>=8?' disabled':'')+'><i class="dot" style="'+(on?'background:'+colorOf(r.id)+';border-color:'+colorOf(r.id):'')+'"></i><span><b>'+esc(r.name)+'</b><small>'+fmtDate(r.date)+' · '+esc(typeLabel(r))+' · '+fmtTime(st.T)+'</small></span></label>'});
+  h+='</section><section class="card"><h2>Opzioni</h2><div class="form">';
+  h+='<div class="full"><div class="note" style="margin-bottom:4px">ASSE ORIZZONTALE</div><div class="seg"><button data-act="xmode" data-x="lap" aria-pressed="'+(S.xMode==='lap')+'">Lap</button><button data-act="xmode" data-x="km" aria-pressed="'+(S.xMode==='km')+'">Distanza (km)</button><button data-act="xmode" data-x="pct" aria-pressed="'+(S.xMode==='pct')+'">% distanza</button></div></div>';
+  h+='<label class="rp full" style="padding:0"><input type="checkbox" id="optSmooth"'+(S.smooth?' checked':'')+'><span>Smussa le curve<small>media mobile su 3 lap, per i parametri per lap</small></span></label>';
+  h+='<label class="f">Obiettivo (h:mm:ss)<input type="text" id="tgt" value="'+esc(S.target)+'" placeholder="4:10:00" inputmode="numeric" autocomplete="off"></label>';
+  h+='<label class="f">su distanza<select id="tgtType">'+['maratona','mezza','dieci'].map(function(k){return '<option value="'+k+'"'+(S.targetType===k?' selected':'')+'>'+TYPES[k].label+'</option>'}).join('')+'</select></label>';
+  var t=parseTarget(S.target);
+  if(t)h+='<p class="note full" style="margin:0">Passo obiettivo: <b>'+fmtPace(t/TYPES[S.targetType].km)+' /km</b>. Compare come linea tratteggiata nei grafici di passo e tempo atteso.</p>';
+  h+='</div></section></aside><div class="stack">';
+  if(!sel.length)h+='<section class="card empty">Seleziona almeno un&apos;attività a sinistra per vedere i grafici.</section>';
+  else{
+    S.charts.forEach(function(ch,i){
+      var P=PARAMS[ch.param];
+      h+='<section class="card"><div class="chart-h"><select data-act="param" data-ci="'+i+'" aria-label="Parametro del grafico">'+Object.keys(PARAMS).map(function(k){return '<option value="'+k+'"'+(ch.param===k?' selected':'')+'>'+PARAMS[k].label+'</option>'}).join('')+'</select><span class="note">'+P.unit+(S.smooth&&!P.cum?' · smussato':'')+'</span>';
+      if(S.charts.length>1)h+='<button class="btn ghost sm" data-act="rmchart" data-ci="'+i+'" style="margin-left:auto">Rimuovi</button>';
+      h+='</div><div id="lg'+i+'"></div><div class="plot" id="pl'+i+'"></div><div class="note" id="nt'+i+'"></div></section>'});
+    if(S.charts.length<6)h+='<div><button class="btn ghost" data-act="addchart">+ Aggiungi grafico</button></div>';
+    h+='<section class="card"><h2>Riepilogo</h2><div class="tblwrap"><table><thead><tr><th class="l">Parametro</th>'+sel.map(function(r){return '<th><span class="sh" style="justify-content:flex-end"><i class="dot" style="background:'+colorOf(r.id)+';border-color:'+colorOf(r.id)+'"></i>'+esc(r.name)+'</span></th>'}).join('')+'</tr></thead><tbody>';
+    var sts=sel.map(stats);
+    var rows=[['Data',function(r){return fmtDate(r.date)}],['Tipo',function(r){return KINDS[r.kind||'gara']}],['Località',function(r){return esc(r.location||'–')}],['Distanza',function(r){return esc(typeLabel(r))}],
+      ['Distanza registrata km',function(r,s){return nf(s.Dd,2)}],['Tempo',function(r,s){return '<b>'+fmtTime(s.T)+'</b>'}],['Passo medio',function(r,s){return fmtPace(s.pace)+' /km'}],
+      ['1ª metà',function(r,s){return fmtTime(s.h1)}],['2ª metà',function(r,s){return fmtTime(s.h2)}],['Differenza 2ª − 1ª',function(r,s){return fmtDelta(s.delta)}],['Regolarità del passo (CV %)',function(r,s){return s.reg?'<b>'+nf(s.reg.cv*100,1)+' %</b>':'–'}],['Km entro ±5% dal passo medio',function(r,s){return s.reg?nf(s.reg.pct*100,0)+' %':'–'}],['Dev. standard del passo s/km',function(r,s){return s.reg?nf(s.reg.sd,1):'–'}],['Lap esclusi dalla regolarità',function(r,s){return s.reg?String(s.reg.nExcl):'–'}],
+      ['FC media bpm',function(r,s){return d0(s.hr)}],['FC max bpm',function(r,s){return d0(s.hrMax)}],['Potenza media W',function(r,s){return d0(s.power)}],['W/kg medio',function(r,s){return d2(s.wkg)}],
+      ['Cadenza passi/min',function(r,s){return d0(s.cadence)}],['Contatto suolo ms',function(r,s){return d0(s.gct)}],['Lunghezza passo m',function(r,s){return d2(s.stride)}],
+      ['Oscill. verticale cm',function(r,s){return d1(s.vo)}],['Rapporto verticale %',function(r,s){return d1(s.vr)}],['Ascesa m',function(r,s){return d0(s.ascent)}],['Discesa m',function(r,s){return d0(s.descent)}],['Calorie',function(r,s){return d0(s.cal)}]];
+    rows.forEach(function(x){h+='<tr><td class="l">'+x[0]+'</td>'+sel.map(function(r,i){return '<td>'+x[1](r,sts[i])+'</td>'}).join('')+'</tr>'});
+    h+='</tbody></table></div></section>'}
+  return h+'</div></div>';
+}
+
+/* ---------- render ---------- */
+function render(){
+  drawers=[];
+  document.querySelectorAll('.tab').forEach(function(t){t.setAttribute('aria-selected',String(t.dataset.view===S.view))});
+  var m=$('#main');
+  m.innerHTML=S.view==='gare'?viewGare():S.view==='scheda'?viewScheda():viewConfronto();
+  if(S.view==='confronto'){
+    var sel=S.selected.map(raceById).filter(Boolean);
+    S.charts.forEach(function(ch,i){
+      if(!$('#pl'+i))return;var P=PARAMS[ch.param];
+      var xm=(P.elev&&S.xMode==='lap')?'km':S.xMode;
+      var ser=seriesFor(ch.param,sel,{xMode:xm,smooth:S.smooth,color:function(r){return colorOf(r.id)}});
+      $('#lg'+i).innerHTML=legendHTML(ser.filter(function(x){return x.pts.some(function(p){return p.y!=null})}));
+      var dists={};sel.forEach(function(r){if((r.kind||'gara')==='gara')dists[r.distanceKm]=1});
+      if(ch.param==='projV'||ch.param==='proj'){var nr=sel.filter(function(r){return (r.kind||'gara')!=='gara'}).length,msg=[];if(nr)msg.push('Allenamenti e sedute in pista non hanno un tempo atteso e non compaiono.');if(Object.keys(dists).length>1)msg.push('Le gare selezionate hanno distanze diverse: ogni tempo atteso si riferisce alla distanza di quella gara.');$('#nt'+i).textContent=msg.join(' ')}
+      if(P.elev){var noE=sel.filter(function(r){return !(r.elev&&r.elev.length)}).map(function(r){return r.name});
+        if(noE.length)$('#nt'+i).textContent=ch.param==='elev'?'Senza TCX la quota assoluta non è nota, quindi non compaiono: '+noE.join(', ')+'. Usa “dislivello dalla partenza” oppure completa queste attività con il TCX dalla scheda.':'Per '+noE.join(', ')+' il profilo è ricostruito dai dislivelli dei lap, quindi è approssimato.'}
+      drawers.push(function(){drawChart($('#pl'+i),{series:ser,fmt:P.fmt,time:P.time,xMode:xm,area:!!P.elev&&ser.length===1,ref:refFor(ch.param),title:P.label})});
+    });
+  }
+  if(S.view==='scheda'&&raceById(S.current)){
+    var r=raceById(S.current),one=[r];
+    function pair(params,names,id,fmt,time){
+      var ser=params.map(function(p,k){return {id:p,name:names[k],color:'var(--s'+(k===0?1:2)+')',pts:seriesFor(p,one,{xMode:'lap',smooth:false,color:function(){return ''}})[0].pts}});
+      $('#lg'+id).innerHTML=legendHTML(ser);
+      drawers.push(function(){drawChart($('#pl'+id),{series:ser,fmt:fmt,time:time,xMode:'lap',title:names.join(', ')})})}
+    pair(['pace','prog'],['Passo per lap','Passo medio progressivo'],0,fmtPace,true);
+    if((r.kind||'gara')==='gara')pair(['projV','proj'],['Distanza normalizzata','Distanza GPS'],1,fmtTime,true);
+    else pair(['hr'],['FC media'],1,d0,false);
+    var evr=elevOf(r,false);if(!evr.exact)evr=elevOf(r,true);
+    if(evr.pts.length){var es=[{id:'e',name:'Quota',color:'var(--s1)',pts:evr.pts}];drawers.push(function(){drawChart($('#pl2'),{series:es,fmt:d0,time:false,xMode:'km',area:true,title:'Profilo altimetrico'})})}
+    else{$('#pl2').innerHTML='<div class="empty">Nessun dato di altitudine. Completa l\'attività con il file TCX.</div>'}
+  }
+  requestAnimationFrame(function(){drawers.forEach(function(f){f()})});
+}
+var rz;window.addEventListener('resize',function(){clearTimeout(rz);rz=setTimeout(function(){drawers.forEach(function(f){f()})},120)});
+
+function mergeFile(file){
+  var ext=(file.name.split('.').pop()||'').toLowerCase(),r=raceById(S.current);
+  if(!r||(ext!=='csv'&&ext!=='tcx')){toast('Carica un file .csv o .tcx.');return}
+  var fr=new FileReader();
+  fr.onload=function(){
+    try{
+      var res=ext==='csv'?parseCSV(String(fr.result)):parseTCX(String(fr.result)),msg=[];
+      var t0=sum(r.laps,function(l){return l.time}),t1=sum(res.laps,function(l){return l.time});
+      if(Math.abs(t1-t0)/t0>0.05)throw new Error('Il file non sembra della stessa attività: la durata è diversa.');
+      if(res.elev){r.elev=res.elev;r.elevStep=res.elevStep||0.1;msg.push('profilo altimetrico aggiunto')}
+      if(res.laps.length===r.laps.length){var n=0;res.laps.forEach(function(l,i){Object.keys(l).forEach(function(k){if(k!=='n'&&k!=='time'&&k!=='dist'&&r.laps[i][k]==null){r.laps[i][k]=l[k];n++}})});if(n)msg.push('dati per lap completati')}
+      else msg.push('lap non abbinati perché il numero è diverso');
+      if(!msg.length)msg.push('niente di nuovo da aggiungere');
+      save();render();toast(msg.join(', '))
+    }catch(e){toast(e.message||'File non leggibile')}
+  };
+  fr.readAsText(file)
+}
+function keepScroll(){var w=$('.tblwrap.tall'),y=w?w.scrollTop:0,x=w?w.scrollLeft:0;save();render();var n=$('.tblwrap.tall');if(n){n.scrollTop=y;n.scrollLeft=x}}
+function go(v){S.view=v;try{history.replaceState(null,'','#'+v)}catch(e){location.hash=v}render();window.scrollTo(0,0)}
+
+/* ---------- dati: backup e ripristino ---------- */
+function stampName(ts){var d=ts?new Date(ts):new Date();return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())}
+function dlBlob(name,text,type){var b=new Blob([text],{type:type}),u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(function(){URL.revokeObjectURL(u)},3000)}
+function buildPage(){
+  var el=document.documentElement.cloneNode(true),x;
+  x=el.querySelector('#main');if(x)x.innerHTML='';
+  x=el.querySelector('#overlay');if(x)x.innerHTML='';
+  x=el.querySelector('#toast');if(x){x.textContent='';x.setAttribute('hidden','')}
+  x=el.querySelector('#embed');x.textContent=JSON.stringify(snapshot()).replace(/</g,'\\u003c');
+  return '<!doctype html>\n'+el.outerHTML}
+async function savePage(){
+  var html=buildPage(),emb=readEmbed(),prev=JSON.stringify(emb||snapshot()),direct=false;
+  if(window.showSaveFilePicker){
+    try{var fh=await window.showSaveFilePicker({suggestedName:'Analisi-Gare.html',types:[{description:'Pagina HTML',accept:{'text/html':['.html']}}]});
+      var w=await fh.createWritable();await w.write(html);await w.close();direct=true}
+    catch(e){if(e&&e.name==='AbortError')return}}
+  if(!direct)dlBlob('Analisi-Gare.html',html,'text/html');
+  setTimeout(function(){dlBlob('analisi-gare-backup-'+stampName(emb&&emb.rev)+'.json',prev,'application/json')},600);
+  $('#embed').textContent=JSON.stringify(snapshot()).replace(/</g,'\\u003c');
+  toast(direct?'Pagina salvata. Backup della versione precedente in download.':'Pagina e backup scaricati: sostituisci il vecchio file in Dropbox.')}
+function openData(){
+  var json=JSON.stringify(snapshot()),disp=null;try{disp=localStorage.getItem(KEY+'-displaced')}catch(e){}
+  $('#overlay').innerHTML='<div class="modal"><div class="card" role="dialog" aria-label="Salva e ripristina dati"><div class="row between"><h2 style="margin:0">Salva / ripristina dati</h2><button class="btn ghost sm" data-act="closeData">Chiudi</button></div>'+
+   '<h3>Salva la pagina con i dati dentro</h3>'+
+   '<p class="note" style="margin:0">Crea un nuovo <b>Analisi-Gare.html</b> con tutte le gare incluse: mettilo in Dropbox al posto del vecchio e lo apri da qualsiasi dispositivo con gli stessi dati. Insieme scarica un file <b>.json</b> con i dati della versione che stai sostituendo, per poter tornare indietro. In Chrome e Edge scegli direttamente il file in Dropbox da sovrascrivere; altrove (Safari compreso) i file vanno in Download e il vecchio lo sostituisci tu.</p>'+
+   '<div class="row"><button class="btn" data-act="savePage">Salva pagina e backup</button></div>'+
+   '<h3>Solo i dati</h3><div class="row"><button class="btn ghost sm" data-act="dl">Scarica .json</button><button class="btn ghost sm" data-act="copyJson">Copia il testo</button></div>'+
+   '<textarea id="dJson" readonly aria-label="Dati delle gare">'+esc(json)+'</textarea>'+
+   '<h3>Ripristina da un backup</h3><div class="row"><input type="file" id="impFile" accept=".json,application/json" style="width:auto"></div>'+
+   '<textarea id="impTxt" placeholder="Scegli un file .json oppure incolla qui il testo copiato" aria-label="Testo da importare"></textarea>'+
+   '<div class="row"><button class="btn sm" data-act="restore">Aggiungi le gare mancanti</button><button class="btn ghost sm" data-act="restoreAll">Sostituisci tutte le gare con il backup</button></div>'+
+   (disp?'<div class="row"><span class="note" style="flex:1 1 260px">Dati del browser sostituiti da un file più recente: li hai ancora.</span><button class="btn ghost sm" data-act="restoreDisp">Recupera le gare sostituite</button></div>':'')+
+   '</div></div>';
+}
+function doRestore(txt,mode){
+  try{
+    var d=JSON.parse(txt);if(!d||!Array.isArray(d.races))throw 0;
+    var ok=d.races.filter(function(r){return r&&r.laps&&r.laps.length&&r.id});
+    if(mode==='all'){S.races=ok;S.selected=(d.selected||ok.map(function(r){return r.id})).filter(function(id){return ok.some(function(r){return r.id===id})}).slice(0,8);S.current=ok.length?sortedRaces()[0].id:null;save();$('#overlay').innerHTML='';render();toast('Ripristinate '+ok.length+' attività dal backup');return}
+    var n=0;ok.forEach(function(r){if(!raceById(r.id)){S.races.push(r);n++}});
+    save();$('#overlay').innerHTML='';render();toast(n+(n===1?' gara aggiunta':' gare aggiunte'));
+  }catch(e){toast('File non valido: servono i dati esportati da questa pagina.')}
+}
+
+/* ---------- eventi ---------- */
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-act],[data-view],#btnData');if(!t)return;
+  if(t.id==='btnData'){openData();return}
+  if(t.dataset.view){go(t.dataset.view);return}
+  var a=t.dataset.act,id=t.dataset.id;
+  if(a==='filter'){S.filter=t.dataset.f;if(S.filter!=='all')S.kindFilter='gara';selectOnly(visible().map(function(r){return r.id}));save();render()}
+  else if(a==='selAll'){var add=visible().map(function(r){return r.id}).filter(function(id){return S.selected.indexOf(id)<0}),room=8-S.selected.length;S.selected=S.selected.concat(add.slice(0,Math.max(0,room)));if(add.length>room)toast('Raggiunto il massimo di 8 attività');save();render()}
+  else if(a==='selNone'){var vis=visible().map(function(r){return r.id});S.selected=S.selected.filter(function(id){return vis.indexOf(id)<0});save();render()}
+  else if(a==='xmode'){S.xMode=t.dataset.x;save();render()}
+  else if(a==='addchart'){var used=S.charts.map(function(c){return c.param}),k=Object.keys(PARAMS).filter(function(p){return used.indexOf(p)<0})[0]||'hr';S.charts.push({param:k});save();render()}
+  else if(a==='rmchart'){S.charts.splice(+t.dataset.ci,1);save();render()}
+  else if(a==='open'){S.current=id;go('scheda')}
+  else if(a==='del'){
+    if(t.dataset.arm){S.races=S.races.filter(function(r){return r.id!==id});S.selected=S.selected.filter(function(x){return x!==id});if(S.current===id)S.current=S.races.length?sortedRaces()[0].id:null;save();render();toast('Attività eliminata')}
+    else{t.dataset.arm='1';t.textContent='Conferma';t.classList.add('danger');setTimeout(function(){if(t.isConnected){delete t.dataset.arm;t.textContent='Elimina';t.classList.remove('danger')}},3500)}}
+  else if(a==='dkind'){S.draft.kind=t.dataset.k;render()}
+  else if(a==='kfilter'){S.kindFilter=t.dataset.f;if(S.kindFilter!=='all'&&S.kindFilter!=='gara')S.filter='all';selectOnly(visible().map(function(r){return r.id}));save();render()}
+  else if(a==='exclAnom'){var rx=raceById(S.current),ax=anomalies(rx.laps);rx.laps.forEach(function(l,i){if(ax[i])l.excl=true});keepScroll()}
+  else if(a==='exclNone'){raceById(S.current).laps.forEach(function(l){delete l.excl});keepScroll()}
+  else if(a==='cancelDraft'){S.draft=null;S.draftMsg='';render()}
+  else if(a==='saveDraft'){
+    var d=S.draft;if(!d)return;
+    d.name=$('#dName').value.trim();d.date=$('#dDate').value;d.location=$('#dLoc').value.trim();
+    if(!d.name){S.draftMsg='Inserisci un nome.';render();$('#dName').focus();return}
+    var km,tp=d.type;if(d.kind==='gara'){km=d.type==='altro'?parseFloat($('#dKm').value):TYPES[d.type].km}else{km=sum(d.laps,function(l){return l.dist});tp='altro'}
+    if(!(km>0)){S.draftMsg='Inserisci la distanza ufficiale in km.';render();return}
+    var r={id:uid(),name:d.name,date:d.date,location:d.location,kind:d.kind,type:tp,distanceKm:km,elev:d.elev||undefined,elevStep:d.elev?0.1:undefined,source:d.source,laps:d.laps,added:Date.now()};
+    S.races.push(r);if(S.selected.length<8)S.selected.push(r.id);S.current=r.id;S.draft=null;S.draftMsg='';save();go('scheda');toast('Attività salvata')}
+  else if(a==='closeData'){$('#overlay').innerHTML=''}
+  else if(a==='dl'){dlBlob('analisi-gare-dati-'+stampName()+'.json',$('#dJson').value,'application/json');toast('Se il download non parte, usa “Copia il testo”.')}
+  else if(a==='copyJson'){
+    var ta=$('#dJson');
+    (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(ta.value):Promise.reject()).then(function(){toast('Testo copiato')},function(){ta.focus();ta.select();toast('Seleziona e copia il testo (Ctrl/Cmd+C)')})}
+  else if(a==='restore'){var tx=$('#impTxt').value.trim();if(tx)doRestore(tx,'add');else toast('Incolla il testo oppure scegli un file.')}
+  else if(a==='restoreAll'){var tx2=$('#impTxt').value.trim();if(!tx2){toast('Incolla il testo oppure scegli un file.');return}
+    if(t.dataset.arm){doRestore(tx2,'all')}else{t.dataset.arm='1';t.textContent='Conferma: sostituisci tutto';t.classList.add('danger');setTimeout(function(){if(t.isConnected){delete t.dataset.arm;t.textContent='Sostituisci tutte le gare con il backup';t.classList.remove('danger')}},4000)}}
+  else if(a==='savePage'){savePage()}
+  else if(a==='restoreDisp'){var dv=null;try{dv=localStorage.getItem(KEY+'-displaced')}catch(e){}if(dv)doRestore(dv,'add')}
+});
+document.addEventListener('change',function(e){
+  var t=e.target,a=t.dataset&&t.dataset.act;
+  if(t.id==='file'&&t.files[0])readFile(t.files[0]);
+  else if(t.id==='mergeFile'&&t.files[0])mergeFile(t.files[0]);
+  else if(t.id==='impFile'&&t.files[0]){var fr=new FileReader();fr.onload=function(){$('#impTxt').value=String(fr.result);toast('File letto: scegli se aggiungere le gare mancanti o sostituire tutto.')};fr.readAsText(t.files[0])}
+  else if(a==='pick'){var id=t.dataset.id,i=S.selected.indexOf(id);if(t.checked&&i<0)S.selected.push(id);else if(!t.checked&&i>-1)S.selected.splice(i,1);save();render()}
+  else if(a==='param'){S.charts[+t.dataset.ci].param=t.value;save();render()}
+  else if(a==='excl'){var rr=raceById(S.current),ll=rr.laps[+t.dataset.i];if(t.checked)ll.excl=true;else delete ll.excl;keepScroll()}
+  else if(t.id==='optSmooth'){S.smooth=t.checked;save();render()}
+  else if(t.id==='tgt'){S.target=t.value.trim();save();render()}
+  else if(t.id==='tgtType'){S.targetType=t.value;save();render()}
+  else if(t.id==='dType'){S.draft.type=t.value;$('#dKmWrap').hidden=t.value!=='altro'}
+  else if(t.id==='pickRace'){S.current=t.value;render()}
+  else if(S.view==='scheda'&&/^e(Name|Date|Loc|Type|Km|Kind)$/.test(t.id)){
+    var r=raceById(S.current);if(!r)return;
+    if(t.id==='eName'&&t.value.trim())r.name=t.value.trim();
+    if(t.id==='eKind'){r.kind=t.value;var tt=sum(r.laps,function(l){return l.dist});if(t.value==='gara'){r.type=detectType(tt);r.distanceKm=r.type==='altro'?Math.round(tt*10)/10:TYPES[r.type].km}else{r.type='altro';r.distanceKm=tt}}
+    if(t.id==='eDate')r.date=t.value;if(t.id==='eLoc')r.location=t.value.trim();
+    if(t.id==='eType'){r.type=t.value;if(t.value!=='altro')r.distanceKm=TYPES[t.value].km;else r.distanceKm=Math.round(sum(r.laps,function(l){return l.dist})*10)/10}
+    if(t.id==='eKm'&&parseFloat(t.value)>0)r.distanceKm=parseFloat(t.value);
+    save();render()}
+});
+document.addEventListener('dragover',function(e){var d=e.target.closest&&e.target.closest('#drop');if(d){e.preventDefault();d.classList.add('over')}});
+document.addEventListener('dragleave',function(e){var d=e.target.closest&&e.target.closest('#drop');if(d)d.classList.remove('over')});
+document.addEventListener('drop',function(e){var d=e.target.closest&&e.target.closest('#drop');if(d){e.preventDefault();d.classList.remove('over');if(e.dataTransfer.files[0])readFile(e.dataTransfer.files[0])}});
+document.addEventListener('input',function(e){
+  var t=e.target;if(!S.draft)return;
+  if(t.id==='dName')S.draft.name=t.value;if(t.id==='dDate')S.draft.date=t.value;if(t.id==='dLoc')S.draft.location=t.value;if(t.id==='dKm')S.draft.km=t.value});
+window.addEventListener('hashchange',function(){var h=(location.hash||'').replace('#','');if((h==='gare'||h==='scheda'||h==='confronto')&&h!==S.view){S.view=h;render()}});
+
+load();render();if(S.loadNote)toast(S.loadNote);
+})();
+</script>
+
+</body></html>
