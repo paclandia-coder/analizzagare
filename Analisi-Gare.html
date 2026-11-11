@@ -532,7 +532,7 @@ function lfMatch(r,F){F=F||LF;
   if(F.d1&&(r.date||'')<F.d1)return false;if(F.d2&&(r.date||'')>F.d2)return false;
   var q=F.q.trim().toLowerCase();if(q&&((r.name||'')+' '+(r.location||'')).toLowerCase().indexOf(q)<0)return false;
   return true}
-function lfList(){return sortedRaces().filter(lfMatch)}
+function lfList(){return sortedRaces().filter(function(r){return lfMatch(r,LF)})}
 function filterCard(){
   var h='<section class="card"><h2>Filtra le attività</h2><div class="note" style="margin-bottom:6px">TIPO</div><div>';
   [['maratona','Maratona'],['mezza','Mezza'],['dieci','10k'],['altro','Altre gare'],['allen','Allenamenti']].forEach(function(c){h+='<button class="chip" data-act="lfchip" data-t="'+c[0]+'" aria-pressed="'+(!!LF.types[c[0]])+'">'+c[1]+'</button>'});
@@ -578,13 +578,15 @@ function viewScheda(){
   var st=stats(r),c=st.c,L=r.laps,isRace=(r.kind||'gara')==='gara',an=anomalies(L),reg=st.reg,nAn=an.filter(Boolean).length;
   var h='<div class="stack"><section class="card"><div class="row between" style="margin-bottom:12px"><h2 style="margin:0">'+esc(r.name)+'</h2>';
   h+='<label class="f" style="min-width:200px">Cambia attività<select id="pickRace">'+sortedRaces().map(function(x){return '<option value="'+x.id+'"'+(x.id===r.id?' selected':'')+'>'+esc(x.name)+' · '+fmtDate(x.date)+'</option>'}).join('')+'</select></label></div>';
+  var un=S.unlocked===r.id,dis=un?'':' disabled';
+  h+='<div class="row" style="margin:-4px 0 10px"><button class="btn ghost sm" data-act="lockToggle">'+(un?'🔓 Blocca i dati':'🔒 Sblocca per modificare')+'</button><span class="note">'+(un?'Modifica attiva: ricordati di bloccare di nuovo.':'Nome, data, località, tipo e distanza sono bloccati per evitare modifiche accidentali.')+'</span></div>';
   h+='<div class="form" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">';
-  h+='<label class="f">Nome<input type="text" id="eName" maxlength="28" value="'+esc(r.name)+'"></label>';
-  h+='<label class="f">Data<input type="date" id="eDate" value="'+esc(r.date||'')+'"></label>';
-  h+='<label class="f">Località<input type="text" id="eLoc" value="'+esc(r.location||'')+'"></label>';
-  h+='<label class="f">Tipo<select id="eKind">'+Object.keys(KINDS).map(function(k){return '<option value="'+k+'"'+((r.kind||'gara')===k?' selected':'')+'>'+KINDS[k]+'</option>'}).join('')+'</select></label>';
-  if(isRace)h+='<label class="f">Distanza ufficiale<select id="eType">'+Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(r.type===k?' selected':'')+'>'+TYPES[k].label+'</option>'}).join('')+'</select></label>';
-  if(isRace&&r.type==='altro')h+='<label class="f">Km<input type="number" id="eKm" step="0.001" min="0.1" value="'+esc(r.distanceKm)+'"></label>';
+  h+='<label class="f">Nome<input type="text" id="eName" maxlength="28" value="'+esc(r.name)+'"'+dis+'></label>';
+  h+='<label class="f">Data<input type="date" id="eDate" value="'+esc(r.date||'')+'"'+dis+'></label>';
+  h+='<label class="f">Località<input type="text" id="eLoc" value="'+esc(r.location||'')+'"'+dis+'></label>';
+  h+='<label class="f">Tipo<select id="eKind"'+dis+'>'+Object.keys(KINDS).map(function(k){return '<option value="'+k+'"'+((r.kind||'gara')===k?' selected':'')+'>'+KINDS[k]+'</option>'}).join('')+'</select></label>';
+  if(isRace)h+='<label class="f">Distanza ufficiale<select id="eType"'+dis+'>'+Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(r.type===k?' selected':'')+'>'+TYPES[k].label+'</option>'}).join('')+'</select></label>';
+  if(isRace&&r.type==='altro')h+='<label class="f">Km<input type="number" id="eKm" step="0.001" min="0.1" value="'+esc(r.distanceKm)+'"'+dis+'></label>';
   h+='</div>';
   var hasDyn=L.some(function(l){return l.gct!=null});
   h+='<div class="row" style="margin-top:12px"><label class="btn ghost sm" style="cursor:pointer">Completa con un altro file (CSV o TCX)<input type="file" id="mergeFile" accept=".csv,.tcx,.xml" hidden></label><span class="note" style="flex:1 1 280px">'+(r.elev?'Profilo altimetrico presente. ':'Profilo altimetrico non presente: serve il TCX. ')+(hasDyn?'':'Mancano contatto al suolo, oscillazione e rapporto verticale: arrivano dal CSV. ')+(r.timeFix?'Il tempo è stato corretto con quello del riepilogo Garmin (i lap sommavano '+fmtTime(st.T-r.timeFix.s)+'), con la differenza sull\'ultimo lap: per i tempi esatti dei lap completa con il TCX. ':'')+'Il file deve essere della stessa attività.</span></div>';
@@ -727,7 +729,7 @@ function mergeFile(file){
   fr.readAsText(file)
 }
 function keepScroll(){var w=$('.tblwrap.tall'),y=w?w.scrollTop:0,x=w?w.scrollLeft:0;save();render();var n=$('.tblwrap.tall');if(n){n.scrollTop=y;n.scrollLeft=x}}
-function go(v){S.view=v;try{history.replaceState(null,'','#'+v)}catch(e){location.hash=v}render();window.scrollTo(0,0)}
+function go(v){S.view=v;S.unlocked=null;try{history.replaceState(null,'','#'+v)}catch(e){location.hash=v}render();window.scrollTo(0,0)}
 
 /* ---------- dati: backup e ripristino ---------- */
 function stampName(ts){var d=ts?new Date(ts):new Date();return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())}
@@ -806,6 +808,7 @@ document.addEventListener('click',function(e){
   else if(a==='kfilter'){S.kindFilter=t.dataset.f;if(S.kindFilter!=='all'&&S.kindFilter!=='gara')S.filter='all';selectOnly(visible().map(function(r){return r.id}));save();render()}
   else if(a==='exclAnom'){var rx=raceById(S.current),ax=anomalies(rx.laps);rx.laps.forEach(function(l,i){if(ax[i])l.excl=true});keepScroll()}
   else if(a==='exclNone'){raceById(S.current).laps.forEach(function(l){delete l.excl});keepScroll()}
+  else if(a==='lockToggle'){S.unlocked=S.unlocked===S.current?null:S.current;render()}
   else if(a==='lfchip'){var k=t.dataset.t;if(LF.types[k])delete LF.types[k];else LF.types[k]=1;render()}
   else if(a==='cfreset'){CF={km1:'',km2:'',d1:'',d2:'',q:''};S.filter='all';S.kindFilter='all';selectOnly(visible().map(function(r){return r.id}));save();render()}
   else if(a==='lfreset'){LF={types:{},km1:'',km2:'',d1:'',d2:'',q:''};render()}
@@ -866,7 +869,7 @@ window.addEventListener('hashchange',function(){var h=(location.hash||'').replac
 
 load();render();if(S.loadNote)toast(S.loadNote);
 /* aggiornamento automatico: se online controlla che la pagina sul server non sia più nuova */
-var BUILD='1794403558';
+var BUILD='1794405862';
 (function(){
   if(!/^https?:$/.test(location.protocol)||!navigator.onLine||!window.fetch)return;
   try{if(sessionStorage.getItem('ag-upd')===BUILD+'|'+(readEmbed()||{}).rev)return}catch(e){}
