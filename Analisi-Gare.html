@@ -237,7 +237,7 @@ function load(){
   S.current=S.races.length?sortedRaces()[0].id:null;
   save();
 }
-function matches(r){var k=r.kind||'gara';return (S.kindFilter==='all'||k===S.kindFilter)&&(S.filter==='all'||(k==='gara'&&r.type===S.filter))}
+function matches(r){var k=r.kind||'gara';return (S.kindFilter==='all'||k===S.kindFilter)&&(S.filter==='all'||(k==='gara'&&r.type===S.filter))&&lfMatch(r,CF)}
 function visible(){return sortedRaces().filter(matches)}
 function selectOnly(ids){S.selected=ids.slice(0,8);if(ids.length>8)toast('Selezionate le 8 più recenti: è il massimo per il confronto')}
 function sortedRaces(){return S.races.slice().sort(function(a,b){return (b.date||'').localeCompare(a.date||'')||(b.added||0)-(a.added||0)})}
@@ -520,15 +520,17 @@ function filesOf(r){
   var dyn=r.laps.some(function(l){return l.gct!=null});
   return {csv:r.source!=='tcx'||dyn,tcx:r.source==='tcx'||!!(r.elev&&r.elev.length)}}
 function fileTags(r){var f=filesOf(r);return '<span class="ftag'+(f.csv?'':' off')+'" title="'+(f.csv?'CSV presente':'CSV mancante')+'">CSV</span><span class="ftag'+(f.tcx?'':' off')+'" title="'+(f.tcx?'TCX presente':'TCX mancante')+'">TCX</span>'}
+var CF={km1:'',km2:'',d1:'',d2:'',q:''};
+function cfActive(){return CF.km1!==''||CF.km2!==''||CF.d1||CF.d2||CF.q.trim()}
 var LF={types:{},km1:'',km2:'',d1:'',d2:'',q:''};
 function lfActive(){return Object.keys(LF.types).length||LF.km1!==''||LF.km2!==''||LF.d1||LF.d2||LF.q.trim()}
-function lfMatch(r){
-  var ty=Object.keys(LF.types);
+function lfMatch(r,F){F=F||LF;
+  var ty=Object.keys(F.types||{});
   if(ty.length){var k=r.kind||'gara',ok=ty.some(function(t){return t==='allen'?k!=='gara':(k==='gara'&&r.type===t)});if(!ok)return false}
-  var D=sum(r.laps,function(l){return l.dist}),a=parseFloat(String(LF.km1).replace(',','.')),b=parseFloat(String(LF.km2).replace(',','.'));
+  var D=sum(r.laps,function(l){return l.dist}),a=parseFloat(String(F.km1).replace(',','.')),b=parseFloat(String(F.km2).replace(',','.'));
   if(a>=0&&D<a-0.05)return false;if(b>=0&&D>b+0.05)return false;
-  if(LF.d1&&(r.date||'')<LF.d1)return false;if(LF.d2&&(r.date||'')>LF.d2)return false;
-  var q=LF.q.trim().toLowerCase();if(q&&((r.name||'')+' '+(r.location||'')).toLowerCase().indexOf(q)<0)return false;
+  if(F.d1&&(r.date||'')<F.d1)return false;if(F.d2&&(r.date||'')>F.d2)return false;
+  var q=F.q.trim().toLowerCase();if(q&&((r.name||'')+' '+(r.location||'')).toLowerCase().indexOf(q)<0)return false;
   return true}
 function lfList(){return sortedRaces().filter(lfMatch)}
 function filterCard(){
@@ -627,6 +629,11 @@ function viewConfronto(){
   var h='<div class="cmp"><aside class="rail"><section class="card"><div class="row between" style="margin-bottom:8px"><h2 style="margin:0">Attività</h2><span class="note">'+S.selected.length+' selezionate (max 8)</span></div>';
   h+='<div class="seg" style="margin-bottom:8px">'+[['all','Tutte'],['gara','Gare'],['allenamento','Allenamenti'],['pista','Pista']].map(function(f){return '<button data-act="kfilter" data-f="'+f[0]+'" aria-pressed="'+(S.kindFilter===f[0])+'">'+f[1]+'</button>'}).join('')+'</div>';
   h+='<div class="seg" style="margin-bottom:10px">'+[['all','Ogni dist.'],['maratona','Maratone'],['mezza','Mezze'],['dieci','10 km'],['altro','Altre']].map(function(f){return '<button data-act="filter" data-f="'+f[0]+'" aria-pressed="'+(S.filter===f[0])+'">'+f[1]+'</button>'}).join('')+'</div>';
+  h+='<details'+(cfActive()?' open':'')+' style="margin-bottom:10px"><summary class="note" style="cursor:pointer;padding:4px 0">Altri filtri: km, date, nome'+(cfActive()?' · attivi':'')+'</summary>'+
+   '<div class="rng"><label class="f">Km da<input type="number" inputmode="decimal" step="0.1" min="0" id="cfKm1" value="'+esc(CF.km1)+'" placeholder="15"></label><label class="f">a<input type="number" inputmode="decimal" step="0.1" min="0" id="cfKm2" value="'+esc(CF.km2)+'" placeholder="22"></label></div>'+
+   '<div class="rng" style="margin-top:8px"><label class="f">Data da<input type="date" id="cfD1" value="'+esc(CF.d1)+'"></label><label class="f">a<input type="date" id="cfD2" value="'+esc(CF.d2)+'"></label></div>'+
+   '<label class="f" style="margin-top:8px">Nome o località<input type="text" id="cfQ" value="'+esc(CF.q)+'" placeholder="es. Monza" autocomplete="off"></label>'+
+   '<div class="row" style="margin-top:8px"><button class="btn ghost sm" data-act="cfreset">Azzera tutti i filtri</button></div></details>';
   h+='<div class="row" style="margin-bottom:6px"><button class="btn ghost sm" data-act="selAll">Seleziona tutte</button><button class="btn ghost sm" data-act="selNone">Deseleziona tutte</button><span class="note">'+list.length+' mostrate</span></div>';
   if(!list.length)h+='<div class="empty" style="padding:16px 0">Nessuna attività di questo tipo.</div>';
   list.forEach(function(r){var on=S.selected.indexOf(r.id)>-1,st=stats(r);
@@ -800,6 +807,7 @@ document.addEventListener('click',function(e){
   else if(a==='exclAnom'){var rx=raceById(S.current),ax=anomalies(rx.laps);rx.laps.forEach(function(l,i){if(ax[i])l.excl=true});keepScroll()}
   else if(a==='exclNone'){raceById(S.current).laps.forEach(function(l){delete l.excl});keepScroll()}
   else if(a==='lfchip'){var k=t.dataset.t;if(LF.types[k])delete LF.types[k];else LF.types[k]=1;render()}
+  else if(a==='cfreset'){CF={km1:'',km2:'',d1:'',d2:'',q:''};S.filter='all';S.kindFilter='all';selectOnly(visible().map(function(r){return r.id}));save();render()}
   else if(a==='lfreset'){LF={types:{},km1:'',km2:'',d1:'',d2:'',q:''};render()}
   else if(a==='lfcompare'){var L=lfList().slice(0,8);if(!L.length){toast('Nessuna attività da confrontare.');return}selectOnly(L.map(function(r){return r.id}));save();go('confronto')}
   else if(a==='cancelDraft'){S.draft=null;S.draftMsg='';render()}
@@ -824,6 +832,8 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('change',function(e){
   var t=e.target,a=t.dataset&&t.dataset.act;
+  var cm={cfKm1:'km1',cfKm2:'km2',cfD1:'d1',cfD2:'d2',cfQ:'q'};
+  if(cm[t.id]){CF[cm[t.id]]=t.value;setTimeout(function(){var ae=document.activeElement,id=ae&&ae.id&&/^cf/.test(ae.id)?ae.id:null;selectOnly(visible().map(function(r){return r.id}));save();render();if(id){var el=document.getElementById(id);if(el)try{el.focus()}catch(e){}}},0);return}
   if(t.id==='file'&&t.files[0])readFile(t.files[0]);
   else if(t.id==='mergeFile'&&t.files[0])mergeFile(t.files[0]);
   else if(t.id==='impFile'&&t.files[0]){var fr=new FileReader();fr.onload=function(){$('#impTxt').value=String(fr.result);toast('File letto: scegli se aggiungere le gare mancanti o sostituire tutto.')};fr.readAsText(t.files[0])}
@@ -856,7 +866,7 @@ window.addEventListener('hashchange',function(){var h=(location.hash||'').replac
 
 load();render();if(S.loadNote)toast(S.loadNote);
 /* aggiornamento automatico: se online controlla che la pagina sul server non sia più nuova */
-var BUILD='1794401385';
+var BUILD='1794403558';
 (function(){
   if(!/^https?:$/.test(location.protocol)||!navigator.onLine||!window.fetch)return;
   try{if(sessionStorage.getItem('ag-upd')===BUILD+'|'+(readEmbed()||{}).rev)return}catch(e){}
