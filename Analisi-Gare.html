@@ -493,6 +493,55 @@ function elevCardHTML(r){
   if(e)note='Quota minima '+d0(Math.min.apply(null,r.elev))+' m · massima '+d0(Math.max.apply(null,r.elev))+' m · '+nf(r.elev.length*(r.elevStep||0.1),1)+' km registrati';
   else note='Senza TCX la quota non è nota: il profilo è ricostruito dai dislivelli per lap, partendo da 0 m, ed è approssimato. Per il profilo preciso usa “Completa con un altro file” e scegli il TCX di questa attività.';
   return '<section class="card" style="grid-column:1/-1"><h3 style="margin-bottom:8px">Profilo altimetrico'+(e?'':' (ricostruito)')+'</h3><div class="plot" id="pl2"></div><div class="note">'+note+'</div></section>'}
+
+/* ---------- grafico doppio (due profili sovrapposti, due assi) ---------- */
+function dualOpts(sel){return Object.keys(PARAMS).filter(function(k){return !PARAMS[k].raceOnly}).map(function(k){return '<option value="'+k+'"'+(sel===k?' selected':'')+'>'+PARAMS[k].label+'</option>'}).join('')}
+function dualCardHTML(){
+  var d=S.dual||(S.dual={a:'elev',b:'pace'});
+  return '<section class="card" style="grid-column:1/-1"><h3 style="margin-bottom:8px">Sovrapponi due profili</h3><div class="row" style="margin-bottom:8px;gap:12px"><label class="f" style="flex:1 1 240px"><span style="color:var(--s1);font-weight:600">● Asse sinistro</span><select data-act="dual" data-w="a">'+dualOpts(d.a)+'</select></label><label class="f" style="flex:1 1 240px"><span style="color:var(--s2);font-weight:600">● Asse destro</span><select data-act="dual" data-w="b">'+dualOpts(d.b)+'</select></label></div><div class="plot" id="pl3"></div><div class="note" id="nt3"></div></section>'}
+function dualSeries(r,k,color){
+  var P=PARAMS[k],pts;
+  if(P.elev){var e=elevOf(r,P.elev==='rel');if(!e.pts.length&&P.elev==='abs')e=elevOf(r,true);pts=e.pts}
+  else pts=seriesFor(k,[r],{xMode:'km',smooth:false,color:function(){return ''}})[0].pts;
+  pts=pts.filter(function(p){return p.y!=null});
+  return {key:k,name:P.label,unit:P.unit,fmt:P.fmt,time:!!P.time,area:!!P.elev,color:color,pts:pts}}
+function yAt(pts,x){
+  if(!pts.length||x<pts[0].x-0.3||x>pts[pts.length-1].x+0.3)return null;
+  for(var i=0;i<pts.length;i++){if(pts[i].x>=x){if(i===0)return pts[0].y;var a=pts[i-1],b=pts[i],t=(x-a.x)/((b.x-a.x)||1);return a.y+(b.y-a.y)*t}}
+  return pts[pts.length-1].y}
+function drawDual(host,A,B){
+  var out=[A,B].filter(function(q){return q.pts.length>1});
+  if(out.length<2){var miss=[A,B].filter(function(q){return q.pts.length<2}).map(function(q){return q.name});host.innerHTML='<div class="empty">Dati mancanti per: '+esc(miss.join(', '))+'.</div>';return}
+  var W=Math.max(260,Math.floor(host.clientWidth)),H=W<520?270:330,m={l:54,r:54,t:16,b:34},pw=W-m.l-m.r,ph=H-m.t-m.b;
+  var xs=A.pts.concat(B.pts).map(function(p){return p.x}),x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs);if(x1===x0)x1=x0+1;
+  function rng(q){var ys=q.pts.map(function(p){return p.y}),a=Math.min.apply(null,ys),b=Math.max.apply(null,ys),pd=(b-a)*.08||Math.abs(a)*.05||1;return [a-pd,b+pd]}
+  var ra=rng(A),rb=rng(B);
+  function X(v){return m.l+(v-x0)/(x1-x0)*pw}
+  function YA(v){return m.t+(1-(v-ra[0])/(ra[1]-ra[0]))*ph}
+  function YB(v){return m.t+(1-(v-rb[0])/(rb[1]-rb[0]))*ph}
+  var s='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+esc(A.name+' e '+B.name)+'">';
+  ticks(ra[0],ra[1],5,A.time).forEach(function(v){var y=YA(v);s+='<line class="gl" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+y+'" y2="'+y+'"/><text class="ax" x="'+(m.l-8)+'" y="'+(y+4)+'" text-anchor="end" style="fill:'+A.color+'">'+esc(A.fmt(v))+'</text>'});
+  ticks(rb[0],rb[1],5,B.time).forEach(function(v){var y=YB(v);s+='<text class="ax" x="'+(W-m.r+8)+'" y="'+(y+4)+'" style="fill:'+B.color+'">'+esc(B.fmt(v))+'</text>'});
+  s+='<text class="axt" x="'+m.l+'" y="11" style="fill:'+A.color+'">'+esc(A.unit)+'</text><text class="axt" x="'+(W-m.r)+'" y="11" text-anchor="end" style="fill:'+B.color+'">'+esc(B.unit)+'</text>';
+  s+='<line class="base" x1="'+m.l+'" x2="'+(W-m.r)+'" y1="'+(H-m.b)+'" y2="'+(H-m.b)+'"/>';
+  ticks(x0,x1,W<520?5:9,false).forEach(function(v){var x=X(v);s+='<line class="base" x1="'+x+'" x2="'+x+'" y1="'+(H-m.b)+'" y2="'+(H-m.b+4)+'"/><text class="ax" x="'+x+'" y="'+(H-m.b+17)+'" text-anchor="middle">'+nf(v,v%1?1:0)+'</text>'});
+  s+='<text class="axt" x="'+((m.l+W-m.r)/2)+'" y="'+(H-3)+'" text-anchor="middle">Distanza (km)</text>';
+  [[A,YA],[B,YB]].forEach(function(q){var se=q[0],Y=q[1],d='';
+    if(se.area){var a='M'+X(se.pts[0].x).toFixed(1)+' '+(H-m.b);se.pts.forEach(function(p){a+='L'+X(p.x).toFixed(1)+' '+Y(p.y).toFixed(1)});a+='L'+X(se.pts[se.pts.length-1].x).toFixed(1)+' '+(H-m.b)+'Z';s+='<path d="'+a+'" style="fill:'+se.color+';opacity:.14"/>'}
+    se.pts.forEach(function(p,i){d+=(i?'L':'M')+X(p.x).toFixed(1)+' '+Y(p.y).toFixed(1)});
+    s+='<path class="ln" style="stroke:'+se.color+'" d="'+d+'"/>'});
+  s+='<g id="hv"></g><rect id="ov" x="'+m.l+'" y="'+m.t+'" width="'+pw+'" height="'+ph+'" fill="transparent"/></svg><div class="tip" hidden></div>';
+  host.innerHTML=s;
+  var ov=$('#ov',host),hv=$('#hv',host),tip=$('.tip',host);ov.removeAttribute('id');hv.removeAttribute('id');
+  function move(e){
+    var bb=ov.getBoundingClientRect(),px=e.clientX-bb.left+m.l,x=Math.max(x0,Math.min(x1,x0+(px-m.l)/pw*(x1-x0)));
+    var ya=yAt(A.pts,x),yb=yAt(B.pts,x),g='<line class="xh" x1="'+X(x)+'" x2="'+X(x)+'" y1="'+m.t+'" y2="'+(H-m.b)+'"/>',h='<div class="th">km '+nf(x,2)+'</div>';
+    if(ya!=null){g+='<circle cx="'+X(x)+'" cy="'+YA(ya)+'" r="4.5" style="fill:'+A.color+';stroke:var(--surface);stroke-width:2"/>';h+='<div class="r"><span><i style="background:'+A.color+'"></i>'+esc(A.name)+'</span><b>'+esc(A.fmt(ya))+'</b></div>'}
+    if(yb!=null){g+='<circle cx="'+X(x)+'" cy="'+YB(yb)+'" r="4.5" style="fill:'+B.color+';stroke:var(--surface);stroke-width:2"/>';h+='<div class="r"><span><i style="background:'+B.color+'"></i>'+esc(B.name)+'</span><b>'+esc(B.fmt(yb))+'</b></div>'}
+    hv.innerHTML=g;tip.innerHTML=h;tip.hidden=false;
+    var tw=tip.offsetWidth,tx=X(x)+14;if(tx+tw>W)tx=X(x)-tw-14;tip.style.left=Math.max(0,tx)+'px';tip.style.top=(m.t+6)+'px'}
+  function leave(){hv.innerHTML='';tip.hidden=true}
+  ov.addEventListener('pointermove',move);ov.addEventListener('pointerdown',move);ov.addEventListener('pointerleave',leave)}
 function smoothPts(pts){return pts.map(function(p,i){
   if(p.y==null)return p;var w=[pts[i-1],p,pts[i+1]].filter(function(q){return q&&q.y!=null});
   return {x:p.x,y:w.reduce(function(a,q){return a+q.y},0)/w.length}})}
@@ -620,7 +669,7 @@ function viewScheda(){
   h+='</tbody></table></div></section>';
   h+='<div class="grid-c" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:20px">';
   h+='<section class="card"><h3 style="margin-bottom:8px">Passo per lap e passo medio progressivo</h3><div id="lg0"></div><div class="plot" id="pl0"></div></section>';
-  h+='<section class="card"><h3 style="margin-bottom:8px">'+(isRace?'Tempo atteso a fine gara':'Frequenza cardiaca per lap')+'</h3><div id="lg1"></div><div class="plot" id="pl1"></div></section>'+elevCardHTML(r)+'</div>';
+  h+='<section class="card"><h3 style="margin-bottom:8px">'+(isRace?'Tempo atteso a fine gara':'Frequenza cardiaca per lap')+'</h3><div id="lg1"></div><div class="plot" id="pl1"></div></section>'+elevCardHTML(r)+dualCardHTML()+'</div>';
   return h+'</div>';
 }
 function kpi(k,v,s){return '<div class="kpi"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="s">'+s+'</div></div>'}
@@ -701,6 +750,10 @@ function render(){
     var evr=elevOf(r,false);if(!evr.exact)evr=elevOf(r,true);
     if(evr.pts.length){var es=[{id:'e',name:'Quota',color:'var(--s1)',pts:evr.pts}];drawers.push(function(){drawChart($('#pl2'),{series:es,fmt:d0,time:false,xMode:'km',area:true,title:'Profilo altimetrico'})})}
     else{$('#pl2').innerHTML='<div class="empty">Nessun dato di altitudine. Completa l\'attività con il file TCX.</div>'}
+    drawers.push(function(){var d=S.dual||{a:'elev',b:'pace'},A=dualSeries(r,d.a,'var(--s1)'),B=dualSeries(r,d.b,'var(--s2)');
+      var nt=[];if(PARAMS[d.a].elev==='abs'&&!(r.elev&&r.elev.length))nt.push('quota ricostruita dai dislivelli per lap (serve il TCX per quella precisa)');
+      if(!PARAMS[d.a].elev||!PARAMS[d.b].elev)nt.push('i parametri per lap sono collegati con una linea tra i punti di fine lap');
+      $('#nt3').textContent=nt.join(' · ');drawDual($('#pl3'),A,B)})
   }
   requestAnimationFrame(function(){drawers.forEach(function(f){f()})});
 }
@@ -841,6 +894,7 @@ document.addEventListener('change',function(e){
   else if(t.id==='mergeFile'&&t.files[0])mergeFile(t.files[0]);
   else if(t.id==='impFile'&&t.files[0]){var fr=new FileReader();fr.onload=function(){$('#impTxt').value=String(fr.result);toast('File letto: scegli se aggiungere le gare mancanti o sostituire tutto.')};fr.readAsText(t.files[0])}
   else if(a==='pick'){var id=t.dataset.id,i=S.selected.indexOf(id);if(t.checked&&i<0)S.selected.push(id);else if(!t.checked&&i>-1)S.selected.splice(i,1);save();render()}
+  else if(a==='dual'){S.dual=S.dual||{a:'elev',b:'pace'};S.dual[t.dataset.w]=t.value;render()}
   else if(a==='param'){S.charts[+t.dataset.ci].param=t.value;save();render()}
   else if(a==='excl'){var rr=raceById(S.current),ll=rr.laps[+t.dataset.i];if(t.checked)ll.excl=true;else delete ll.excl;keepScroll()}
   else if(t.id==='optSmooth'){S.smooth=t.checked;save();render()}
@@ -869,7 +923,7 @@ window.addEventListener('hashchange',function(){var h=(location.hash||'').replac
 
 load();render();if(S.loadNote)toast(S.loadNote);
 /* aggiornamento automatico: se online controlla che la pagina sul server non sia più nuova */
-var BUILD='1794405862';
+var BUILD='1794431407';
 (function(){
   if(!/^https?:$/.test(location.protocol)||!navigator.onLine||!window.fetch)return;
   try{if(sessionStorage.getItem('ag-upd')===BUILD+'|'+(readEmbed()||{}).rev)return}catch(e){}
